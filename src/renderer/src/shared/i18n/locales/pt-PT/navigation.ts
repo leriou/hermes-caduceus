@@ -7,7 +7,7 @@ export default {
   apikeys: "Chaves API",
   toolkeys: "Chaves de Ferramentas",
   routing: "Roteamento",
-  skills: "Competências/Skills",
+  skills: "Skills",
   plugins: "Plugins",
   persona: "Persona",
   schedules: "Agendamentos",
@@ -16,6 +16,7 @@ export default {
   config: "Config YAML",
   settings: "Definições",
   modelControl: "Controlo de Modelos",
+  tools: "Ferramentas",
   extensions: "Extensões",
   system: "Sistema",
 } as const;

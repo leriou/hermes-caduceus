@@ -16,6 +16,7 @@ export default {
   config: "Config",
   settings: "Pengaturan",
   modelControl: "Kontrol Model",
+  tools: "Alat",
   extensions: "Ekstensi",
   system: "Sistem",
 } as const;

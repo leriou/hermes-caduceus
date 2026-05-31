@@ -941,6 +941,12 @@
   white-space: normal;
 }
 
+.chat-bubble-user {
+  background: var(--user-bubble);
+  color: var(--user-bubble-text);
+  border-bottom-right-radius: 4px;
+}
+
 .chat-bubble-agent pre,
 .chat-bubble-agent code {
   /* Restore preserved whitespace inside code blocks and inline code. */

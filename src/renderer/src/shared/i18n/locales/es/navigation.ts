@@ -16,6 +16,7 @@ export default {
   config: "Configuración YAML",
   settings: "Configuración",
   modelControl: "Control de Modelos",
+  tools: "Herramientas",
   extensions: "Extensiones",
   system: "Sistema",
 } as const;

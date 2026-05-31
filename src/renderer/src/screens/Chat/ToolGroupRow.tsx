@@ -181,6 +181,13 @@ function extractTarget(args: Record<string, any>): string {
   return "";
 }
 
+function extractFirstString(args: Record<string, any>): string {
+  for (const val of Object.values(args)) {
+    if (typeof val === "string" && val.trim()) return val.trim();
+  }
+  return "";
+}
+
 const ACTION_KEYS = ["action", "operation", "method", "mode", "type", "verb"];
 
 function extractAction(args: Record<string, any>): string {
@@ -268,10 +275,13 @@ export function getFriendlyToolDescription(
     nameLower.includes("execute") ||
     nameLower.includes("run")
   ) {
+    // Try harder to find the command text — check all likely arg keys, then
+    // fall back to the first non-empty string value in the args object.
+    const cmd = displayParam || extractFirstString(argsObj);
     return {
       icon: "💻",
       action: "Running",
-      detail: displayParam ? `$ ${displayParam}` : "command",
+      detail: cmd ? `$ ${cmd}` : (argsStr && argsStr !== "{}" ? argsStr.slice(0, 80) : ""),
       kind: "code",
     };
   }

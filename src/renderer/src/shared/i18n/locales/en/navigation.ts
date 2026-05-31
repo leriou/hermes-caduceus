@@ -16,6 +16,7 @@ export default {
   config: "Config",
   settings: "Settings",
   modelControl: "Model Control",
+  tools: "Tools",
   extensions: "Extensions",
   system: "System",
 } as const;

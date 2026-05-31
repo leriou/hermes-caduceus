@@ -6,6 +6,7 @@ import {
   uninstallSkill,
 } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Search, X, Download, Trash, Refresh } from "../../assets/icons";
 import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { useI18n } from "../../components/useI18n";
@@ -261,7 +262,7 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
   return (
     <div className="skills-container">
       {/* Detail Panel */}
-      {detailSkill && (
+      {detailSkill && createPortal(
         <div
           className="skills-detail-overlay"
           onClick={() => setDetailSkill(null)}
@@ -311,7 +312,8 @@ function Skills({ profile }: SkillsProps): React.JSX.Element {
               <AgentMarkdown>{detailContent}</AgentMarkdown>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       <div className="skills-header" style={{ justifyContent: "flex-end", marginTop: 0, minHeight: 0, marginBottom: 16 }}>

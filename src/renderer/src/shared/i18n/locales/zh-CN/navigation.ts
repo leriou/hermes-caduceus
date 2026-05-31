@@ -7,7 +7,7 @@ export default {
   apikeys: "API 密钥",
   toolkeys: "工具密钥",
   routing: "路由与容错",
-  skills: "技能",
+  skills: "技能统计",
   plugins: "插件",
   persona: "人格与记忆",
   schedules: "计划任务",
@@ -16,6 +16,7 @@ export default {
   config: "配置",
   settings: "常规设置",
   modelControl: "模型控制",
+  tools: "工具",
   extensions: "扩展",
   system: "系统设置",
 } as const;
