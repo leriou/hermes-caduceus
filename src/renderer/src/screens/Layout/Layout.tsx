@@ -379,6 +379,7 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
                       ...(patch.pendingClarify !== undefined ? { pendingClarify: patch.pendingClarify } : {}), ...(patch.pendingSudo !== undefined ? { pendingSudo: patch.pendingSudo } : {}),
                       ...(patch.pendingSecret !== undefined ? { pendingSecret: patch.pendingSecret } : {}), ...(patch.usage !== undefined ? { usage: patch.usage } : {}),
                       ...(patch.streamingText !== undefined ? { streamingText: patch.streamingText } : {}), ...(patch.streamingReasoning !== undefined ? { streamingReasoning: patch.streamingReasoning } : {}),
+                      ...(patch.abortRequested !== undefined ? { abortRequested: patch.abortRequested } : {}),
                     }); }} />
                 );
               })}

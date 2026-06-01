@@ -217,8 +217,13 @@ export function useChatInbox({
   const sessionsRef = useRef(sessions);
   const activeTabIdRef = useRef(activeTabId);
   const chatVisibleRef = useRef(chatVisible);
+  const findTabBySessionIdRef = useRef(findTabBySessionId);
+  const updateTabRef = useRef(updateTab);
+  const updateTabMessagesRef = useRef(updateTabMessages);
   const pendingChunksRef = useRef(new Map<string, string>());
   const flushFramesRef = useRef(new Map<string, unknown>());
+  const pendingReasoningRef = useRef(new Map<string, string>());
+  const reasoningFlushRef = useRef(new Map<string, unknown>());
   const turnCompletedRef = useRef(new Map<string, boolean>());
   const flushedTextRef = useRef(new Map<string, string>());
   const stuckTimerRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
@@ -231,6 +236,8 @@ export function useChatInbox({
     pendingChunksRef.current.delete(tabId);
     flushFramesRef.current.delete(tabId);
     flushedTextRef.current.delete(tabId);
+    pendingReasoningRef.current.delete(tabId);
+    reasoningFlushRef.current.delete(tabId);
     const timer = stuckTimerRef.current.get(tabId);
     if (timer) {
       clearTimeout(timer);
@@ -317,15 +324,30 @@ export function useChatInbox({
   function finalizeStuckTurn(tabId: string, sid?: string, showWarning = true): void {
     const current = sessionsRef.current.get(tabId);
     if (!current?.isLoading && !current?.toolProgress) return;
+    // Flush pending reasoning before reading state
+    const pR = pendingReasoningRef.current.get(tabId) ?? "";
+    if (pR) {
+      pendingReasoningRef.current.delete(tabId);
+      updateTab(tabId, {
+        streamingReasoning: `${current.streamingReasoning ?? ""}${pR}`,
+      });
+    }
+    const currentAfterFlush = sessionsRef.current.get(tabId) ?? current;
     const pending = pendingChunksRef.current.get(tabId) ?? "";
     const flushed = flushedTextRef.current.get(tabId) ?? "";
-    const text = `${flushed}${pending}` || current.streamingText || "";
-    const reasoning = current.streamingReasoning || "";
+    const text = `${flushed}${pending}` || currentAfterFlush.streamingText || "";
+    const reasoning = currentAfterFlush.streamingReasoning || "";
     const stuckDuration = stuckStartRef.current.has(tabId)
       ? Math.round((Date.now() - (stuckStartRef.current.get(tabId) ?? Date.now())) / 1000)
       : 0;
     pendingChunksRef.current.delete(tabId);
     flushedTextRef.current.delete(tabId);
+    pendingReasoningRef.current.delete(tabId);
+    const rf = reasoningFlushRef.current.get(tabId);
+    if (rf != null) {
+      clearTimeout(rf as unknown as number);
+      reasoningFlushRef.current.delete(tabId);
+    }
     turnCompletedRef.current.set(tabId, true);
     clearStuckTimer(tabId);
     clearSilentTimer(tabId);
@@ -473,9 +495,14 @@ export function useChatInbox({
   }
 
   useEffect(() => {
-    sessionsRef.current = sessions;
+    // sessionsRef is already synced in setSessionsState callback (useSessionManager.ts:99).
+    // Don't override here — useEffect runs after render, and React Strict Mode can cause
+    // double-execution races with the synchronous ref update in the state setter.
     activeTabIdRef.current = activeTabId;
     chatVisibleRef.current = chatVisible;
+    findTabBySessionIdRef.current = findTabBySessionId;
+    updateTabRef.current = updateTab;
+    updateTabMessagesRef.current = updateTabMessages;
     const activeIds = new Set(sessions.keys());
     for (const [tabId, state] of sessions.entries()) {
       const sid = state.hermesSessionId ?? state.dbSessionId ?? undefined;
@@ -503,48 +530,74 @@ export function useChatInbox({
   }, [sessions, activeTabId, chatVisible]);
 
   useEffect(() => {
+    // Read callbacks through refs so this effect never re-runs when
+    // parent re-renders with new function identities (prevents event
+    // listener churn that drops streaming deltas mid-flight).
+    const updateTab = (id: string, patch: Partial<SessionState>) =>
+      updateTabRef.current(id, patch);
+    const updateTabMessages = (id: string, updater: (prev: ChatMessage[]) => ChatMessage[]) =>
+      updateTabMessagesRef.current(id, updater);
+    const findTabBySessionId = (sid: string) =>
+      findTabBySessionIdRef.current(sid);
+
     function tabForEvent(event: NormalizedTuiEvent): string | null {
-      // 1. Event carries a session id — try to find matching tab
       if (event.sessionId) {
+        // 1. Direct match: event's session ID is already bound to a tab
         const matched = findTabBySessionId(event.sessionId);
         if (matched) return matched;
-        // Adopt session id into active tab only if it has no session id yet
-        // and the event is a live event type (message.start, message.delta, etc.)
+
+        // 2. Live events (streaming deltas, tool events) — auto-adopt to active tab
+        //    even if the tab already has a different session bound. This handles
+        //    session ID rotation after gateway reconnect or process restart.
         const active = activeTabIdRef.current;
-        if (
-          LIVE_EVENT_TYPES.has(event.type) &&
-          active &&
-          !sessionsRef.current.get(active)?.hermesSessionId &&
-          !sessionsRef.current.get(active)?.dbSessionId
-        ) {
+        if (LIVE_EVENT_TYPES.has(event.type) && active) {
           updateTab(active, { hermesSessionId: event.sessionId });
           return active;
         }
-        // Session id matches no tab — drop the event
+
+        // 3. Non-live events with unmatched session ID — check active tab as fallback
+        if (active) {
+          const s = sessionsRef.current.get(active);
+          if (s?.hermesSessionId === event.sessionId || s?.dbSessionId === event.sessionId) {
+            return active;
+          }
+        }
         return null;
       }
 
-      // 2. Events without session id: only route to active tab for safe events
+      // Events without session id: route to active tab (safe events only)
       const classification = classifyEvent(event.type);
       if (classification.category === "additive" && !classification.safeAfterAbort) {
         return null;
       }
-
-      const active = activeTabIdRef.current;
-      return active;
+      return activeTabIdRef.current;
     }
 
     function commitStreaming(tabId: string, sid?: string): void {
-      // Force-flush any pending chunks that haven't been flushed yet.
-      // Without this, a message.delta followed immediately by tool.start
-      // in the same microtask loses the text.
+      // Cancel any pending rAF flush — we're committing now
       const pendingFrame = flushFramesRef.current.get(tabId);
-      if (pendingFrame) {
+      if (pendingFrame != null) {
+        cancelAnimationFrame(pendingFrame as unknown as number);
         flushFramesRef.current.delete(tabId);
       }
       const pendingChunk = pendingChunksRef.current.get(tabId) ?? "";
       if (pendingChunk) {
         pendingChunksRef.current.delete(tabId);
+      }
+
+      // Flush pending reasoning chunks before reading state
+      const pendingReasoningFrame = reasoningFlushRef.current.get(tabId);
+      if (pendingReasoningFrame != null) {
+        clearTimeout(pendingReasoningFrame as unknown as number);
+        reasoningFlushRef.current.delete(tabId);
+      }
+      const pendingReasoning = pendingReasoningRef.current.get(tabId) ?? "";
+      if (pendingReasoning) {
+        pendingReasoningRef.current.delete(tabId);
+        const st = sessionsRef.current.get(tabId);
+        updateTab(tabId, {
+          streamingReasoning: `${st?.streamingReasoning ?? ""}${pendingReasoning}`,
+        });
       }
 
       const flushedText = flushedTextRef.current.get(tabId) ?? "";
@@ -595,21 +648,49 @@ export function useChatInbox({
     }
 
     function scheduleFlush(tabId: string): void {
-      // Use microtask instead of rAF for lower-latency streaming.
-      // rAF (16ms cadence) causes visible character drops — deltas that
-      // arrive within the same frame are buffered and only appear after
-      // message.complete triggers a full re-render.  Microtasks fire as
-      // soon as the current JS execution context clears, giving
-      // sub-millisecond flush latency without thrashing the DOM.
+      // Use requestAnimationFrame to batch delta flushes within the same frame (~16ms).
+      // React 18's automatic batching merges all setState calls within a rAF callback into
+      // a single render, reducing React reconciliation overhead by 2-5x during streaming.
+      // Previously microtask (Promise.resolve) fired per JS task, causing individual renders
+      // for closely-spaced deltas; rAF naturally coalesces them.
       if (flushFramesRef.current.has(tabId)) return;
-      const marker: unique symbol = Symbol("flush") as any;
-      flushFramesRef.current.set(tabId, marker as any);
-      void Promise.resolve().then(() => {
-        if (flushFramesRef.current.get(tabId) === marker) {
+      const id = requestAnimationFrame(() => {
+        // Only flush if this animation frame hasn't been superseded
+        if (flushFramesRef.current.get(tabId) === id) {
           flushFramesRef.current.delete(tabId);
           flush(tabId);
         }
       });
+      flushFramesRef.current.set(tabId, id as unknown as Symbol);
+    }
+
+    const REASONING_FLUSH_CHARS = 100;
+    const REASONING_FLUSH_MS = 250;
+
+    function flushReasoning(tabId: string): void {
+      reasoningFlushRef.current.delete(tabId);
+      const batch = pendingReasoningRef.current.get(tabId) ?? "";
+      pendingReasoningRef.current.delete(tabId);
+      if (!batch) return;
+      const state = sessionsRef.current.get(tabId);
+      updateTab(tabId, {
+        streamingReasoning: `${state?.streamingReasoning ?? ""}${batch}`,
+      });
+    }
+
+    function scheduleReasoningFlush(tabId: string): void {
+      const pending = pendingReasoningRef.current.get(tabId) ?? "";
+      if (pending.length >= REASONING_FLUSH_CHARS) {
+        flushReasoning(tabId);
+        return;
+      }
+      if (reasoningFlushRef.current.has(tabId)) return;
+      const id = setTimeout(() => {
+        if (reasoningFlushRef.current.get(tabId) === id) {
+          flushReasoning(tabId);
+        }
+      }, REASONING_FLUSH_MS) as unknown as Symbol;
+      reasoningFlushRef.current.set(tabId, id);
     }
 
     const processEvent = (event: NormalizedTuiEvent): void => {
@@ -628,16 +709,21 @@ export function useChatInbox({
       if (state?.abortRequested) {
         const cls = classifyEvent(event.type);
         if (!cls.safeAfterAbort) return;
-        if (event.type === "message.complete") {
-          updateTab(tabId, { abortRequested: false, isLoading: false });
-          return;
-        }
-        if (event.type === "error") {
+        // Clear abort state on terminal events or new turn start.
+        // For message.complete: fall through to normal handler so the message
+        // is added to the transcript (previously it was dropped entirely).
+        if (event.type === "message.complete" || event.type === "message.start") {
+          updateTab(tabId, { abortRequested: false });
+          // Don't return — let the normal handler process the event
+        } else if (event.type === "error") {
           updateTab(tabId, {
             abortRequested: false,
             isLoading: false,
             toolProgress: null,
           });
+          return;
+        } else {
+          return;
         }
       }
 
@@ -690,18 +776,34 @@ export function useChatInbox({
           }
           turnCompletedRef.current.set(tabId, true);
           const frame = flushFramesRef.current.get(tabId);
-          if (frame) {
+          if (frame != null) {
+            cancelAnimationFrame(frame as unknown as number);
             flushFramesRef.current.delete(tabId);
           }
           // Capture any unflushed chunks before discarding
           const pendingChunk = pendingChunksRef.current.get(tabId) ?? "";
           pendingChunksRef.current.delete(tabId);
 
+          // Flush pending reasoning before reading state
+          const rFrame = reasoningFlushRef.current.get(tabId);
+          if (rFrame != null) {
+            clearTimeout(rFrame as unknown as number);
+            reasoningFlushRef.current.delete(tabId);
+          }
+          const pReasoning = pendingReasoningRef.current.get(tabId) ?? "";
+          if (pReasoning) {
+            pendingReasoningRef.current.delete(tabId);
+            updateTab(tabId, {
+              streamingReasoning: `${state?.streamingReasoning ?? ""}${pReasoning}`,
+            });
+          }
+          const stateFlushed = sessionsRef.current.get(tabId);
+
           const finalText = textFromPayload(payload);
           const reasoningText = stringField(
             payload,
             "reasoning",
-            state?.streamingReasoning || "",
+            stateFlushed?.streamingReasoning || state?.streamingReasoning || "",
           );
           const flushedText = flushedTextRef.current.get(tabId) ?? "";
           flushedTextRef.current.delete(tabId);
@@ -1054,9 +1156,11 @@ export function useChatInbox({
         case "reasoning.delta": {
           const text = textFromPayload(payload);
           if (text) {
-            updateTab(tabId, {
-              streamingReasoning: `${state?.streamingReasoning ?? ""}${text}`,
-            });
+            pendingReasoningRef.current.set(
+              tabId,
+              `${pendingReasoningRef.current.get(tabId) ?? ""}${text}`,
+            );
+            scheduleReasoningFlush(tabId);
             scheduleDeltaIdle(tabId, runtimeSid);
           }
           scheduleStuckProbe(tabId, runtimeSid);
@@ -1274,7 +1378,8 @@ export function useChatInbox({
         unsubscribe();
       }
     };
-  }, [findTabBySessionId, updateTab, updateTabMessages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }
 
 function formatCompressingTitle(statusText: string): string {

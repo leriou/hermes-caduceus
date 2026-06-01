@@ -138,6 +138,15 @@ export function stripHceCompaction(text: string): string {
     .trim();
 }
 
+/** Strip the semantic routing hint injected by conversation_loop.py.
+ *  The hint is wrapped in ⎄…⎄ sentinels so downstream renderers can
+ *  hide it from the user while keeping it available to the model. */
+export function stripRoutingHint(text: string): string {
+  return text
+    .replace(/⎄[\s\S]*?⎄\n*/g, "")
+    .trim();
+}
+
 export function buildRenderableTranscript({
   messages,
   isLoading,
@@ -148,9 +157,18 @@ export function buildRenderableTranscript({
 }: BuildRenderableTranscriptArgs): RenderTranscriptItem[] {
   // Drop reasoning messages — they break tool-call grouping.
   // Drop HCE compaction messages — they are system-internal, not for display.
-  const filtered = messages.filter(
-    (m) => kindOf(m) !== "reasoning" && !isHceCompaction(m),
-  );
+  // Strip routing hints from user messages — they are model-internal, not for display.
+  const filtered = messages
+    .filter((m) => kindOf(m) !== "reasoning" && !isHceCompaction(m))
+    .map((m) => {
+      if (isBubble(m) && m.role === "user") {
+        const stripped = stripRoutingHint((m.content as string) || "");
+        return stripped !== ((m.content as string) || "")
+          ? { ...m, content: stripped }
+          : m;
+      }
+      return m;
+    });
 
   const processed = mergeAgentTextsWithinTurns(
     groupToolCalls(mergeContinuationLabels(filtered)).filter((m) => {

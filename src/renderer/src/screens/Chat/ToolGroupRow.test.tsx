@@ -89,8 +89,8 @@ describe("ToolGroupRow", () => {
     const { container } = render(<ToolGroupRow msg={singleGroup} />);
 
     expect(container.querySelector(".chat-tool-single-footprint")).not.toBeNull();
-    expect(screen.getByText(/Run command/)).toBeInTheDocument();
-    expect(screen.getByText("npm run build")).toBeInTheDocument();
+    expect(screen.getByText(/Running/)).toBeInTheDocument();
+    expect(screen.getByText(/\$ npm run build/)).toBeInTheDocument();
     expect(screen.getByText(/bundling assets/)).toBeInTheDocument();
 
     fireEvent.click(
@@ -127,13 +127,15 @@ describe("ToolGroupRow", () => {
 
     render(<ToolGroupRow msg={singleGroup} />);
 
-    expect(screen.getByText("npm run typecheck")).toBeInTheDocument();
+    expect(screen.getByText(/\$ npm run typecheck/)).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", { name: "查看第 1 次 shell 调用详情" }),
     );
 
     expect(screen.getByText("Args")).toBeInTheDocument();
-    expect(screen.getAllByText("npm run typecheck").length).toBeGreaterThan(1);
+    // The detail line shows "$ npm run typecheck" (terminal prefix added).
+    // The Args section in the modal shows the raw context text.
+    expect(screen.getAllByText(/npm run typecheck/).length).toBeGreaterThan(1);
   });
 });

@@ -533,26 +533,29 @@ describe("useChatInbox", () => {
     });
   });
 
-  it("ignores events with a session id that matches no existing tab", () => {
+  it("auto-adopts live events with unmatched session id onto active tab", () => {
     const updateTab = vi.fn();
     const updateTabMessages = vi.fn();
-    const sessions = new Map<string, SessionState>([["tab-1", sessionState()]]);
+    // Tab already has a bound session (simulating reconnect scenario)
+    const sessions = new Map<string, SessionState>([
+      ["tab-1", sessionState({ hermesSessionId: "old-sid" })],
+    ]);
 
     renderHook(() =>
       useChatInbox({
         sessions,
         activeTabId: "tab-1",
         chatVisible: true,
-        findTabBySessionId: () => null,
+        findTabBySessionId: () => null, // No tab matches the new session ID
         updateTab,
         updateTabMessages,
       }),
     );
 
-    eventHandler?.({ type: "message.delta", sid: "unknown-sid", payload: { text: "orphan" } });
+    // Live event from a new session ID → should auto-adopt to active tab
+    eventHandler?.({ type: "message.delta", sid: "new-sid", payload: { text: "hello" } });
 
-    expect(updateTab).not.toHaveBeenCalled();
-    expect(updateTabMessages).not.toHaveBeenCalled();
+    expect(updateTab).toHaveBeenCalledWith("tab-1", { hermesSessionId: "new-sid" });
   });
 
   it("drops additive events that have no session id", () => {
@@ -780,7 +783,8 @@ describe("useChatInbox", () => {
     expect(updateTabMessages).not.toHaveBeenCalled();
   });
 
-  it("resets abort on message.complete and clears pending state", async () => {
+  it("resets abort on message.complete and processes the message normally", async () => {
+    const updateTabMessages = vi.fn();
     const updateTab = vi.fn((_, patch) => {
       const current = sessions.get("tab-1");
       if (current) sessions.set("tab-1", { ...current, ...patch });
@@ -796,16 +800,22 @@ describe("useChatInbox", () => {
         chatVisible: true,
         findTabBySessionId: () => "tab-1",
         updateTab,
-        updateTabMessages: vi.fn(),
+        updateTabMessages,
       }),
     );
 
     eventHandler?.({ type: "message.complete", sid: "sid-1", payload: {} });
 
     await waitFor(() => {
+      // abortRequested is cleared first, then normal handler processes the message
       expect(updateTab).toHaveBeenCalledWith(
         "tab-1",
-        expect.objectContaining({ abortRequested: false, isLoading: false }),
+        expect.objectContaining({ abortRequested: false }),
+      );
+      // The normal handler should also set isLoading: false
+      expect(updateTab).toHaveBeenCalledWith(
+        "tab-1",
+        expect.objectContaining({ isLoading: false }),
       );
     });
   });
@@ -854,7 +864,7 @@ describe("useChatInbox", () => {
     });
   });
 
-  it("coalesces live assistant deltas within the same microtask", async () => {
+  it("coalesces live assistant deltas within the same animation frame", async () => {
     const updateTab = vi.fn((tabId: string, patch: Partial<SessionState>) => {
       const current = sessions.get(tabId);
       if (current) sessions.set(tabId, { ...current, ...patch });
@@ -884,17 +894,17 @@ describe("useChatInbox", () => {
       payload: { text: "lo" },
     });
 
-    // Before microtask fires, no streamingText update yet
+    // Before rAF fires, no streamingText update yet
     expect(
       updateTab.mock.calls.some(([, patch]) => "streamingText" in patch),
     ).toBe(false);
 
-    // Let microtask drain
+    // Let rAF drain (rAF is natively available in jsdom)
     await act(async () => {
-      await Promise.resolve();
+      await new Promise((r) => requestAnimationFrame(r));
     });
 
-    // After microtask fires, coalesced text should be flushed in one call
+    // After rAF fires, coalesced text should be flushed in one call
     expect(updateTab).toHaveBeenCalledWith(
       "tab-1",
       expect.objectContaining({
@@ -1102,7 +1112,7 @@ describe("useChatInbox", () => {
     );
   });
 
-  it("auto-stops a loading turn after 15 seconds without any agent events", async () => {
+  it("auto-stops a loading turn after 60 seconds without any agent events", async () => {
     vi.useFakeTimers();
     const updateTab = vi.fn((tabId: string, patch: Partial<SessionState>) => {
       const current = sessions.get(tabId);
@@ -1131,7 +1141,7 @@ describe("useChatInbox", () => {
     );
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(60_000);
     });
 
     expect(updateTab).toHaveBeenCalledWith(
@@ -1196,7 +1206,7 @@ describe("useChatInbox", () => {
     );
   });
 
-  it("hard-stops analyzing tool output after 15 seconds even if status probes continue", async () => {
+  it("hard-stops analyzing tool output after 30 seconds even if status probes continue", async () => {
     vi.useFakeTimers();
     vi.mocked(tuiSessionActiveList).mockResolvedValue({
       sessions: [{ id: "sid-1", status: "working" }],
@@ -1234,7 +1244,7 @@ describe("useChatInbox", () => {
     });
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(30_000);
     });
 
     expect(updateTab).toHaveBeenCalledWith(
@@ -1279,7 +1289,7 @@ describe("useChatInbox", () => {
     );
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(30_000);
     });
 
     expect(updateTab).toHaveBeenCalledWith(
@@ -1336,7 +1346,7 @@ describe("useChatInbox", () => {
     });
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(15_000);
+      await vi.advanceTimersByTimeAsync(30_000);
     });
 
     const finalizerCall = updateTabMessages.mock.calls.find(([, updater]) => {

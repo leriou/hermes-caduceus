@@ -65,7 +65,18 @@ export function createTauriChatGatewayClient(
       model?: string,
     ): Promise<string> {
       await api.startGateway();
-      if (currentSessionId) return currentSessionId;
+      if (currentSessionId) {
+        // Lightweight liveness check — if the session is stale (e.g. after
+        // gateway reconnect), fall through to create a new one instead of
+        // passing a dead session ID to prompt.submit.
+        try {
+          await api.tuiSessionStatus(currentSessionId);
+          return currentSessionId;
+        } catch {
+          // Session is stale; let submitPromptWithSession's error handler
+          // resume or recreate.
+        }
+      }
       const res = await api.tuiCreateSession(model);
       const sid = res?.session_id;
       if (!sid) throw new Error("Failed to create Hermes TUI session");

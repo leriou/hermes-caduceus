@@ -246,14 +246,32 @@ export function getFriendlyToolDescription(
   argsStr: string,
 ): ToolDescription {
   let argsObj: Record<string, any> = {};
+  let argsParseOk = false;
   try {
-    argsObj = JSON.parse(argsStr || "{}");
-  } catch {}
+    const parsed = JSON.parse(argsStr || "{}");
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      argsObj = parsed as Record<string, any>;
+      argsParseOk = true;
+    }
+  } catch {
+    // Args is non-JSON text (e.g. "ls -la", plain command string).
+    // Treat the entire string as the "command" value for extractTarget.
+    if (argsStr && argsStr.trim()) {
+      argsObj = { command: argsStr.trim(), content: argsStr.trim() };
+      argsParseOk = false;
+    }
+  }
 
   const nameLower = toolName.toLowerCase();
   const rawParam = extractTarget(argsObj);
   const displayParam =
     rawParam.length > 60 ? rawParam.slice(0, 57) + "…" : rawParam;
+
+  // If args parsed to an empty object, the tool info is lost.
+  // The second arg (argsStr) may actually be context text from the gateway.
+  // Use it as a fallback detail when we have no structured data.
+  const hasStructuredArgs = argsParseOk && Object.keys(argsObj).length > 0;
+  const rawTextFallback = !hasStructuredArgs && argsStr ? argsStr.trim() : "";
 
   // ── Specific tool handlers ────────────────────────────────────────
 
@@ -278,10 +296,13 @@ export function getFriendlyToolDescription(
     // Try harder to find the command text — check all likely arg keys, then
     // fall back to the first non-empty string value in the args object.
     const cmd = displayParam || extractFirstString(argsObj);
+    const fallbackDetail = rawTextFallback && rawTextFallback !== "{}"
+      ? rawTextFallback.slice(0, 80)
+      : (argsStr && argsStr !== "{}" ? argsStr.slice(0, 80) : "");
     return {
       icon: "💻",
       action: "Running",
-      detail: cmd ? `$ ${cmd}` : (argsStr && argsStr !== "{}" ? argsStr.slice(0, 80) : ""),
+      detail: cmd ? `$ ${cmd}` : fallbackDetail,
       kind: "code",
     };
   }
@@ -297,7 +318,7 @@ export function getFriendlyToolDescription(
     return {
       icon: "✍️",
       action: actionType ? `${formatted} · ${actionType}` : formatted,
-      detail: displayParam || "file",
+      detail: displayParam || rawTextFallback.slice(0, 60) || "file",
       kind: "path",
     };
   }
@@ -313,7 +334,7 @@ export function getFriendlyToolDescription(
     return {
       icon: "📖",
       action: actionType ? `${formatted} · ${actionType}` : formatted,
-      detail: displayParam || "file",
+      detail: displayParam || rawTextFallback.slice(0, 60) || "file",
       kind: "path",
     };
   }
@@ -368,7 +389,7 @@ export function getFriendlyToolDescription(
     return {
       icon: inferIcon(nameLower),
       action: verbAction,
-      detail: "",
+      detail: rawTextFallback.slice(0, 60) || "",
       kind: "text" as const,
     };
   }
@@ -376,7 +397,7 @@ export function getFriendlyToolDescription(
   return {
     icon: inferIcon(nameLower),
     action: actionType ? `${formatted} · ${actionType}` : formatted,
-    detail: truncatedTarget || argsStr.slice(0, 60) || "",
+    detail: truncatedTarget || rawTextFallback.slice(0, 60) || argsStr.slice(0, 60) || "",
     kind: inferKind(argsObj),
   };
 }
@@ -567,9 +588,15 @@ function ToolTable({
           {calls.map((call, i) => {
             let args: Record<string, unknown>;
             try {
-              args = JSON.parse(call.args || "{}");
+              const parsed = JSON.parse(call.args || "{}");
+              if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+                args = parsed as Record<string, unknown>;
+              } else {
+                args = {};
+              }
             } catch {
-              args = {};
+              // Non-JSON args text — try to show context if available
+              args = call.context ? { context: call.context } : {};
             }
             const pending = call.result === undefined;
             return (

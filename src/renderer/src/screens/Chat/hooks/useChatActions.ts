@@ -243,6 +243,7 @@ export function useChatActions({
 
       setIsLoading(true);
       abortRequestedRef.current = false;
+      updateTab(activeTabId, { abortRequested: false });
       pushUser(text, "user", attachments);
       onSessionStarted?.();
 
@@ -357,6 +358,7 @@ export function useChatActions({
     }
     updateTab(activeTabId, {
       streamingText: "",
+      streamingReasoning: "",
       abortRequested: true,
       pendingApproval: null,
       pendingClarify: null,
@@ -366,6 +368,13 @@ export function useChatActions({
 
     setIsLoading(false);
     setTimeout(() => chatInputRef.current?.focus(), 50);
+
+    // Safety net: clear abortRequested after 5s so a missing message.complete
+    // doesn't permanently block all future events for this tab.
+    setTimeout(() => {
+      abortRequestedRef.current = false;
+      updateTab(activeTabId, { abortRequested: false });
+    }, 5000);
   }, [
     chatInputRef,
     setIsLoading,

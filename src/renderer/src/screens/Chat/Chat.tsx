@@ -78,6 +78,7 @@ interface ChatProps {
     usage?: import("./types").UsageState | null;
     streamingText?: string;
     streamingReasoning?: string;
+    abortRequested?: boolean;
     pendingModelSwitchMessageId?: string | null;
     todos?: import("./types").TodoItem[];
   }) => void;
