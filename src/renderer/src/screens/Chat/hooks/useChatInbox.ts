@@ -865,14 +865,17 @@ export function useChatInbox({
               sidPatch.relatedSessionIds = [...state.relatedSessionIds, event.sessionId];
             }
           }
+          const newUsage = Object.keys(usage).length
+            ? Object.fromEntries(
+                Object.entries(usageFromPayload(usage)).filter(([_, v]) => v !== undefined),
+              )
+            : null;
           updateTab(tabId, {
             isLoading: false,
             toolProgress: null,
             todos: [],
             ...sidPatch,
-            ...(Object.keys(usage).length
-              ? { usage: usageFromPayload(usage) }
-              : {}),
+            ...(newUsage ? { usage: { ...state?.usage, ...newUsage } } : {}),
             ...(model ? { model } : {}),
           });
           clearPendingInteraction(tabId);
