@@ -665,8 +665,8 @@ export function useChatInbox({
       flushFramesRef.current.set(tabId, id as unknown as Symbol);
     }
 
-    const REASONING_FLUSH_CHARS = 20;
-    const REASONING_FLUSH_MS = 200;
+    const REASONING_FLUSH_CHARS = 100;
+    const REASONING_FLUSH_MS = 800;
 
     function flushReasoning(tabId: string): void {
       reasoningFlushRef.current.delete(tabId);
