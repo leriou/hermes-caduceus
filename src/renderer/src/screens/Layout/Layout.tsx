@@ -47,7 +47,7 @@ import {
   PanelLeftOpen,
   Kanban as KanbanIcon,
 } from "../../assets/icons";
-import { Home, Boxes, Cpu } from "lucide-react";
+import { Home, Boxes, Cpu, Activity as ActivityIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
 
@@ -67,6 +67,7 @@ const Schedules = lazy(() => import("../Schedules/Schedules"));
 const ConfigEditor = lazy(() => import("../ConfigEditor/ConfigEditor"));
 const Kanban = lazy(() => import("../Kanban/Kanban"));
 const Sessions = lazy(() => import("../Sessions/Sessions"));
+const Monitoring = lazy(() => import("../Monitoring/Monitoring"));
 
 function TabSpinner(): React.JSX.Element {
   return (
@@ -94,7 +95,7 @@ function SubTabBar({ tabs, activeTab, onSelect, t }: { tabs: SubView[]; activeTa
   );
 }
 
-type PrimaryView = "home" | "chat" | "sessions" | "agents" | "modelControl" | "extensions" | "kanban" | "system";
+type PrimaryView = "home" | "chat" | "sessions" | "monitoring" | "agents" | "modelControl" | "extensions" | "kanban" | "system";
 type SubView =
   | "models" | "apikeys" | "toolkeys" | "routing"
   | "skills" | "plugins" | "tools" | "persona" | "agents"
@@ -117,6 +118,7 @@ const PRIMARY_NAV: { view: PrimaryView; icon: LucideIcon | any; labelKey: string
   { view: "home", icon: Home, labelKey: "navigation.home" },
   { view: "chat", icon: ChatBubble, labelKey: "navigation.chat" },
   { view: "sessions", icon: Layers, labelKey: "navigation.sessions" },
+  { view: "monitoring", icon: ActivityIcon, labelKey: "navigation.monitoring" },
   { view: "agents", icon: Users, labelKey: "navigation.agents" },
   { view: "modelControl", icon: Cpu, labelKey: "navigation.modelControl" },
   { view: "extensions", icon: Boxes, labelKey: "navigation.extensions" },
@@ -396,6 +398,13 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
                 currentSessionId={sessionManager.activeTabId || null}
                 visible={primaryView === "sessions"}
               />
+            </Suspense>
+          </div>
+        )}
+        {primaryView === "monitoring" && (
+          <div style={paneStyle}>
+            <Suspense fallback={<TabSpinner />}>
+              <Monitoring profile={activeProfile} />
             </Suspense>
           </div>
         )}

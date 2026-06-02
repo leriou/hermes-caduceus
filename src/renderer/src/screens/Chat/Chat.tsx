@@ -11,6 +11,7 @@ import {
 } from "@renderer/lib/hermes-tauri";
 import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReasoningMessage } from "./types";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 
@@ -158,6 +159,25 @@ function Chat({
     }
     return null;
   }, [messages]);
+
+  // --- Thinking duration timer ---
+  const thinkingStartRef = useRef<number | null>(null);
+  const [thinkingDuration, setThinkingDuration] = useState<number | undefined>();
+
+  useEffect(() => {
+    if (isLoading && streamingReasoning) {
+      if (!thinkingStartRef.current) thinkingStartRef.current = Date.now();
+      const interval = setInterval(() => {
+        if (thinkingStartRef.current) {
+          setThinkingDuration(Date.now() - thinkingStartRef.current);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      thinkingStartRef.current = null;
+      setThinkingDuration(undefined);
+    }
+  }, [isLoading, streamingReasoning]);
 
   // --- Extracted hooks ---
 
@@ -602,6 +622,7 @@ function Chat({
               toolProgress={toolProgress}
               streamingText={streamingText}
               streamingReasoning={streamingReasoning}
+              thinkingDuration={thinkingDuration}
               todos={todos}
             />
             <MessageTimelineNavigator

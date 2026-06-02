@@ -8,8 +8,11 @@ import { AgentMarkdown } from "../../components/AgentMarkdown";
 import { buildRenderableTranscript, stripHceCompaction } from "./renderTranscript";
 import { TodoPanel } from "../../components/common/TodoPanel";
 import { ChatEventRow } from "./ChatEventRow";
+import { ThinkingIndicator } from "./ThinkingIndicator";
+import { ThinkingBlock } from "./ThinkingBlock";
 import type {
   ChatMessage,
+  ReasoningMessage,
   SystemEventMessage,
   SystemStatusMessage,
   ToolGroupMessage,
@@ -24,6 +27,7 @@ interface MessageListProps {
   toolProgress: string | null;
   streamingText?: string;
   streamingReasoning?: string;
+  thinkingDuration?: number;
   todos?: TodoItem[];
   scrollerRef?: React.Ref<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
 }
@@ -37,30 +41,6 @@ function getActiveToolCall(messages: ChatMessage[]): ToolCallMessage | null {
     }
   }
   return null;
-}
-
-/* ── Thinking indicator — shows during agent reasoning ─────────────── */
-function LiveReasoningRow({ text }: { text?: string }): React.JSX.Element {
-  const lines = text ? text.split("\n").filter((l) => l.trim()) : [];
-  const lastLine = lines.length > 0 ? lines[lines.length - 1].trim() : "";
-  const displayLine =
-    lastLine.length > 80 ? lastLine.slice(0, 77) + "…" : lastLine;
-
-  return (
-    <div className="chat-message chat-message-agent">
-      <HermesAvatar />
-      <div className="chat-bubble chat-bubble-agent chat-live-reasoning-bubble">
-        <span className="chat-live-reasoning-dot" />
-        <span className="chat-live-reasoning-label">Thinking</span>
-        {lines.length > 0 && (
-          <span className="chat-live-reasoning-meta">{lines.length} lines</span>
-        )}
-        {displayLine && (
-          <span className="chat-live-reasoning-snippet">{displayLine}</span>
-        )}
-      </div>
-    </div>
-  );
 }
 
 function ToolProgressIndicator({
@@ -199,6 +179,7 @@ export const MessageList = memo(function MessageList({
   toolProgress,
   streamingText = "",
   streamingReasoning = "",
+  thinkingDuration = 0,
   todos = [],
   scrollerRef,
 }: MessageListProps): React.JSX.Element {
@@ -269,6 +250,16 @@ export const MessageList = memo(function MessageList({
             </div>
           );
         }
+        if (k === "reasoning") {
+          const rMsg = msg as ReasoningMessage;
+          return (
+            <ThinkingBlock
+              key={rMsg.id}
+              text={rMsg.text}
+              duration={rMsg.duration ?? 0}
+            />
+          );
+        }
         const bubble = msg as Extract<ChatMessage, { role: "user" | "agent" }>;
         return (
           <MessageRow
@@ -281,7 +272,7 @@ export const MessageList = memo(function MessageList({
       })}
       {/* Live streaming content — same container prevents jump on commit */}
       {isLoading && !streamingText && !toolProgress && (
-        <LiveReasoningRow text={streamingReasoning} />
+        <ThinkingIndicator text={streamingReasoning} duration={thinkingDuration ?? 0} />
       )}
       {isLoading && !streamingText && toolProgress && (
         <ToolProgressIndicator toolProgress={toolProgress} messages={messages} />

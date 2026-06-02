@@ -63,9 +63,15 @@ export function ApprovalModal({
             <div className="chat-approval-kicker">Approval required</div>
             <h2>Review command</h2>
           </div>
-          {policy.mode === "countdown" && (
+          {(policy.mode === "countdown" || (policy.mode === "smart" && judgmentAdvice)) && (
             <div className="chat-approval-countdown">
-              Auto {policy.timeoutAction} in {remaining}s
+              {policy.mode === "smart" && judgmentAdvice?.risk === "medium"
+                ? `Smart auto in ${remaining}s (medium risk)`
+                : policy.mode === "smart" && judgmentAdvice?.risk === "low"
+                  ? "Auto-approving (safe)"
+                  : policy.mode === "smart" && judgmentAdvice?.risk === "high"
+                    ? "Requires manual review (risky)"
+                    : `Auto ${policy.timeoutAction} in ${remaining}s`}
             </div>
           )}
         </div>
@@ -102,6 +108,19 @@ export function ApprovalModal({
           <label>
             <input
               type="checkbox"
+              checked={policy.mode === "smart"}
+              onChange={(event) =>
+                onPolicyChange({
+                  ...policy,
+                  mode: event.target.checked ? "smart" : "manual",
+                })
+              }
+            />
+            Smart auto (safe commands auto-approved, risky ones ask)
+          </label>
+          <label>
+            <input
+              type="checkbox"
               checked={policy.mode === "auto_approve"}
               onChange={(event) =>
                 onPolicyChange({
@@ -110,7 +129,7 @@ export function ApprovalModal({
                 })
               }
             />
-            Auto approve future requests
+            Auto approve all
           </label>
           <label>
             <input
@@ -122,7 +141,7 @@ export function ApprovalModal({
                   mode: event.target.checked ? "countdown" : "manual",
                 })
               }
-              disabled={policy.mode === "auto_approve"}
+              disabled={policy.mode === "auto_approve" || policy.mode === "smart"}
             />
             Countdown
           </label>

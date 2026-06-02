@@ -149,6 +149,38 @@ export function useApproval({
     ],
   );
 
+  // Smart mode: judgment-engine-driven auto-approval
+  // Low risk → auto-approve immediately
+  // High risk → show modal (manual)
+  // Medium risk → auto-approve after short countdown (5s)
+  useEffect(() => {
+    if (!visibleApproval || approvalPolicy.mode !== "smart") return;
+    if (approvalSubmittingRef.current) return;
+    if (!approvalJudgment) return; // wait for judgment to finish
+
+    const advice = approvalJudgment;
+
+    if (advice.risk === "low" && advice.confidence >= 0.8) {
+      // Low risk, high confidence → instant auto-approve
+      void handleApprovalDecision("approve", "judgment");
+      return;
+    }
+
+    if (advice.risk === "high") {
+      // High risk → require manual review, do nothing (modal stays)
+      return;
+    }
+
+    // Medium risk → auto-approve after short countdown (5s)
+    const delay = 5000;
+    const timer = window.setTimeout(() => {
+      if (!approvalSubmittingRef.current && visibleApproval) {
+        void handleApprovalDecision("approve", "judgment");
+      }
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [approvalPolicy.mode, visibleApproval, approvalJudgment, handleApprovalDecision]);
+
   useEffect(() => {
     if (!visibleApproval) return;
     const immediate = getImmediateApprovalDecision(approvalPolicy);

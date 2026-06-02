@@ -586,3 +586,69 @@ pub async fn voice_stop(state: State<'_, AppState>) -> Result<String, String> {
     .await
     .map_err(|e| format!("Voice transcription task failed: {}", e))?
 }
+
+/// Collect metrics from a specific plugin or all plugins.
+/// Calls the plugin's `get_metrics()` function via Python subprocess.
+#[command]
+pub async fn get_plugin_metrics(
+    app: AppHandle,
+    name: Option<String>,
+    _profile: Option<String>,
+) -> Result<Value, String> {
+    let python_path = crate::python::get_python_path(Some(&app));
+    let hermes_home = crate::python::get_hermes_home(Some(&app));
+    let plugins_dir = hermes_home.join("plugins");
+
+    if !python_path.exists() {
+        return Err("Python environment not found.".to_string());
+    }
+
+    let target = name.unwrap_or_default();
+    let script = format!(
+        r#"
+import sys, json, importlib.util
+from pathlib import Path
+pd = Path("{plugins_dir}")
+results = []
+dirs = [pd / "{target}"] if "{target}" else sorted(d for d in pd.iterdir() if d.is_dir() and not d.name.startswith(("_", ".")))
+for pdir in dirs:
+    init = pdir / "__init__.py"
+    if not init.exists(): continue
+    try:
+        if str(pd) not in sys.path: sys.path.insert(0, str(pd))
+        spec = importlib.util.spec_from_file_location(pdir.name, str(init))
+        if spec and spec.loader:
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            gm = getattr(mod, "get_metrics", None)
+            if callable(gm):
+                m = gm()
+                if isinstance(m, dict):
+                    results.append({{"plugin": pdir.name, **m}})
+    except Exception as e:
+        results.append({{"plugin": pdir.name, "error": str(e)}})
+print(json.dumps(results, default=str))
+"#,
+        plugins_dir = plugins_dir.display().to_string().replace('"', r#"\""#),
+        target = target,
+    );
+
+    let output = tokio::process::Command::new(&python_path)
+        .arg("-c")
+        .arg(&script)
+        .env("HERMES_HOME", &hermes_home)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run Python: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err(format!("Plugin metrics failed: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    match serde_json::from_str::<Value>(&stdout) {
+        Ok(v) => Ok(v),
+        Err(_) => Ok(json!({"error": "Failed to parse metrics output", "raw": stdout})),
+    }
+}

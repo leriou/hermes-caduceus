@@ -104,6 +104,11 @@ pub(crate) struct TuiGatewayInner {
     pub(crate) mode: GatewayMode,
     pub(crate) stdin_tx: Option<mpsc::Sender<String>>,
     pub(crate) stop_tx: Option<oneshot::Sender<()>>,
+    /// PID of the currently spawned Python child process (ws_entry or tui_gateway.entry).
+    /// Used to force-kill stale processes before spawning a new one.
+    pub(crate) child_pid: Option<u32>,
+    /// Guard to prevent concurrent handle_exit() invocations from stacking up.
+    pub(crate) reconnect_in_progress: bool,
     pub(crate) restart_count: u32,
     pub(crate) max_restarts: u32,
     pub(crate) active_session_id: Option<String>,
@@ -122,6 +127,8 @@ impl<R: Runtime> TuiGateway<R> {
                 mode: GatewayMode::Stdio,
                 stdin_tx: None,
                 stop_tx: None,
+                child_pid: None,
+                reconnect_in_progress: false,
                 restart_count: 0,
                 max_restarts: 5,
                 active_session_id: None,
@@ -267,8 +274,41 @@ impl<R: Runtime> TuiGateway<R> {
         }
     }
 
+    /// Kill the previous child process (if any) before spawning a new one.
+    /// This prevents zombie process accumulation on reconnects.
+    async fn kill_existing(inner: &Arc<TokioMutex<TuiGatewayInner>>) {
+        let mut guard = inner.lock().await;
+        // Send graceful stop signal
+        if let Some(stop_tx) = guard.stop_tx.take() {
+            let _ = stop_tx.send(());
+        }
+        guard.stdin_tx = None;
+        // Force-kill by PID as a belt-and-suspenders measure.
+        // The oneshot stop signal may not arrive if the WS already disconnected
+        // and the reader task exited.
+        if let Some(pid) = guard.child_pid.take() {
+            // On macOS/Linux, signal 15 (SIGTERM) then check; fall back to SIGKILL.
+            // SAFETY: nix::sys::signal::kill is safe for valid PIDs.
+            #[cfg(unix)]
+            {
+                use std::process::Command as StdCommand;
+                // SIGTERM first
+                let _ = StdCommand::new("kill").arg(pid.to_string()).output();
+                // Give it 500ms, then SIGKILL
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                let _ = StdCommand::new("kill")
+                    .args(["-9", &pid.to_string()])
+                    .output();
+            }
+            log_info("gateway", "kill_existing", &format!("Killed stale child PID {}", pid));
+        }
+    }
+
     /// Try WebSocket mode first, then fall back to stdio.
     async fn spawn_process(self: Arc<Self>) -> Result<()> {
+        // Always kill stale processes before spawning a new one.
+        Self::kill_existing(&self.inner).await;
+
         // Attempt WebSocket mode
         match self.clone().spawn_process_ws().await {
             Ok(()) => {
@@ -327,6 +367,12 @@ impl<R: Runtime> TuiGateway<R> {
             })?;
 
         log_info("gateway", "spawn_ws", &format!("Process spawned, PID: {:?}", child.id()));
+
+        // Store PID for kill_existing() on next reconnect
+        {
+            let mut inner = self.inner.lock().await;
+            inner.child_pid = child.id();
+        }
 
         let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to open stdout"))?;
         let stderr = child.stderr.take().ok_or_else(|| anyhow!("Failed to open stderr"))?;
@@ -566,6 +612,12 @@ impl<R: Runtime> TuiGateway<R> {
 
         log_info("gateway", "spawn_stdio", &format!("Process spawned, PID: {:?}", child.id()));
 
+        // Store PID for kill_existing() on next reconnect
+        {
+            let mut inner = self.inner.lock().await;
+            inner.child_pid = child.id();
+        }
+
         let stdin = child.stdin.take().ok_or_else(|| anyhow!("Failed to open stdin"))?;
         let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to open stdout"))?;
         let stderr = child.stderr.take().ok_or_else(|| anyhow!("Failed to open stderr"))?;
@@ -695,6 +747,16 @@ impl<R: Runtime> TuiGateway<R> {
 
     pub fn handle_exit(gateway: Arc<Self>) {
         tokio::spawn(async move {
+            // Prevent concurrent reconnect attempts from stacking up
+            {
+                let mut inner = gateway.inner.lock().await;
+                if inner.reconnect_in_progress {
+                    log_info("gateway", "exit", "Reconnect already in progress, skipping duplicate handle_exit.");
+                    return;
+                }
+                inner.reconnect_in_progress = true;
+            }
+
             let (status, restart_count, max_restarts, active_session) = {
                 let mut inner = gateway.inner.lock().await;
                 let s = inner.status;
@@ -705,6 +767,8 @@ impl<R: Runtime> TuiGateway<R> {
 
             if status == GatewayStatus::Stopped {
                 log_info("gateway", "exit", "Gateway stopped intentionally, no reconnection.");
+                let mut inner = gateway.inner.lock().await;
+                inner.reconnect_in_progress = false;
                 return;
             }
 
@@ -714,6 +778,7 @@ impl<R: Runtime> TuiGateway<R> {
                 {
                     let mut inner = gateway.inner.lock().await;
                     inner.status = GatewayStatus::Failed;
+                    inner.reconnect_in_progress = false;
                 }
                 let _ = gateway.app.emit("tui-event", EventParams {
                     event_type: "gateway.connection_lost".to_string(),
@@ -768,6 +833,7 @@ impl<R: Runtime> TuiGateway<R> {
                         let mut inner = gateway.inner.lock().await;
                         inner.status = GatewayStatus::Ready;
                         inner.restart_count = 0;
+                        inner.reconnect_in_progress = false;
                         inner.last_ready_at = Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs());
                     }
                     if let Some(sid) = active_session {
@@ -803,6 +869,7 @@ impl<R: Runtime> TuiGateway<R> {
             let _ = stop_tx.send(());
         }
         inner.stdin_tx = None;
+        inner.child_pid = None;  // Don't stale-kill an already-stopped child on next start
 
         // Fail all pending requests
         let mut pending = self.pending_requests.lock().unwrap();
