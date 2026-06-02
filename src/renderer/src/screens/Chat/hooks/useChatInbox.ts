@@ -1348,7 +1348,31 @@ export function useChatInbox({
           break;
         }
 
-        // ── Gateway-level errors — always surface to user ────────────
+        // ── Gateway reconnected after process restart ────────────────────
+        case "gateway.reconnected": {
+          const activeTab = activeTabIdRef.current;
+          if (activeTab) {
+            const current = sessionsRef.current.get(activeTab);
+            if (current?.streamingText || current?.streamingReasoning) {
+              console.log("[reconnect] Streaming state preserved after reconnection, continuing.");
+            }
+          }
+          break;
+        }
+
+        // ── Permanent connection loss (max restarts) ─────────────────────
+        case "gateway.connection_lost": {
+          updateTabMessages(tabId, (prev) => [
+            ...prev,
+            notifyGatewayError(event.type, payload),
+          ]);
+          if (state?.isLoading) {
+            finalizeStuckTurn(tabId, state?.hermesSessionId, false);
+          }
+          break;
+        }
+
+        // ── Gateway-level errors — surface to user but preserve streaming state ──
         case "gateway.error":
         case "gateway.protocol_error":
         case "gateway.start_timeout": {
@@ -1356,9 +1380,8 @@ export function useChatInbox({
             ...prev,
             notifyGatewayError(event.type, payload),
           ]);
-          if (state?.isLoading) {
-            updateTab(tabId, { isLoading: false, toolProgress: null });
-          }
+          // Don't clear streaming state — the backend will attempt reconnection
+          // and may resume the session. State is cleared on gateway.connection_lost.
           break;
         }
       }
