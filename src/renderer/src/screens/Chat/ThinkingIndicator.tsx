@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 
 interface ThinkingIndicatorProps {
   text: string;
@@ -7,11 +7,16 @@ interface ThinkingIndicatorProps {
 
 export const ThinkingIndicator = memo(function ThinkingIndicator({
   text,
+  duration,
 }: ThinkingIndicatorProps): React.JSX.Element {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const lines = text ? text.split("\n").filter((l) => l.trim()) : [];
-  const lastLine = lines.length > 0 ? lines[lines.length - 1].trim() : "";
-  const displayLine =
-    lastLine.length > 80 ? lastLine.slice(0, 77) + "…" : lastLine;
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [text]);
 
   return (
     <div className="chat-live-reasoning-footprint">
@@ -20,12 +25,24 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
       </div>
       <div className="chat-live-reasoning-body">
         <span className="chat-live-reasoning-label">Thinking</span>
-        {lines.length > 0 && (
-          <span className="chat-live-reasoning-meta">{lines.length} lines</span>
+        {duration > 0 && (
+          <span className="chat-live-reasoning-duration">
+            {duration >= 1000
+              ? `${Math.floor(duration / 1000)}s`
+              : `${Math.floor(duration)}ms`}
+          </span>
         )}
-        {displayLine && (
-          <span className="chat-live-reasoning-snippet">{displayLine}</span>
-        )}
+        <div className="chat-live-reasoning-scroll" ref={scrollRef}>
+          {lines.length > 0 ? (
+            lines.map((line, i) => (
+              <div key={i} className="chat-live-reasoning-line">
+                {line}
+              </div>
+            ))
+          ) : (
+            <div className="chat-live-reasoning-line">…</div>
+          )}
+        </div>
       </div>
     </div>
   );

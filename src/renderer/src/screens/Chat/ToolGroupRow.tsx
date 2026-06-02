@@ -687,13 +687,7 @@ export const ToolGroupRow = memo(function ToolGroupRow({
   if (pending) statusParts.push(`${pending}…`);
   const statusStr = statusParts.join(" ");
 
-  const [open, setOpen] = useState(!allDone);
-
-  useEffect(() => {
-    if (!allDone) {
-      setOpen(true);
-    }
-  }, [allDone]);
+  const [open, setOpen] = useState(false);
 
   if (total === 1) {
     return <SingleToolFootprint call={msg.calls[0]} toolName={msg.toolName} />;
