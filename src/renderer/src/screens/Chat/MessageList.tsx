@@ -1,4 +1,5 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef, forwardRef } from "react";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { HermesAvatar, MessageRow } from "./MessageRow";
 import { ToolResultRow } from "./HistoryRow";
 import { SubagentRow } from "./SubagentRow";
@@ -20,6 +21,11 @@ import type {
   ToolCallMessage,
   TodoItem,
 } from "./types";
+import type { RenderTranscriptItem } from "./renderTranscript";
+
+export interface MessageListHandle {
+  scrollToBottom: () => void;
+}
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -29,7 +35,9 @@ interface MessageListProps {
   streamingReasoning?: string;
   thinkingDuration?: number;
   todos?: TodoItem[];
-  scrollerRef?: React.Ref<HTMLDivElement | null> | ((el: HTMLDivElement | null) => void);
+  onLoadEarlier?: () => void;
+  onPrepended?: (count: number) => void;
+  atBottomStateChange?: (atBottom: boolean) => void;
 }
 
 function getActiveToolCall(messages: ChatMessage[]): ToolCallMessage | null {
@@ -173,6 +181,61 @@ function SystemEventRow({ msg }: { msg: SystemEventMessage }): React.JSX.Element
   return <ChatEventRow msg={msg} />;
 }
 
+function renderMessage(
+  msg: RenderTranscriptItem,
+  index: number,
+  totalCount: number,
+  isLoading: boolean,
+): React.JSX.Element {
+  const k = (msg as { kind?: string }).kind;
+  if (k === "tool_group") {
+    return <ToolGroupRow msg={msg as ToolGroupMessage} />;
+  }
+  if (k === "subagent") {
+    return (
+      <SubagentRow
+        msg={msg as Extract<ChatMessage, { kind: "subagent" }>}
+      />
+    );
+  }
+  if (k === "tool_result") {
+    return (
+      <ToolResultRow
+        msg={msg as Extract<ChatMessage, { kind: "tool_result" }>}
+      />
+    );
+  }
+  if (k === "system_status") {
+    return <SystemStatusRow msg={msg as SystemStatusMessage} />;
+  }
+  if (k === "system_event") {
+    return <SystemEventRow msg={msg as SystemEventMessage} />;
+  }
+  if (k === "todo") {
+    const todoMsg = msg as TodoMessage;
+    return <TodoPanel todos={todoMsg.todos} defaultCollapsed={true} />;
+  }
+  if (k === "tool_progress") {
+    const progressMsg = msg as Extract<
+      RenderTranscriptItem,
+      { kind: "tool_progress" }
+    >;
+    return <div className="chat-tool-progress-inline">{progressMsg.content}</div>;
+  }
+  if (k === "reasoning") {
+    const rMsg = msg as ReasoningMessage;
+    return <ThinkingBlock text={rMsg.text} duration={rMsg.duration ?? 0} />;
+  }
+  const bubble = msg as Extract<ChatMessage, { role: "user" | "agent" }>;
+  return (
+    <MessageRow
+      msg={bubble}
+      isLast={index === totalCount - 1}
+      isLoading={isLoading}
+    />
+  );
+}
+
 export const MessageList = memo(function MessageList({
   messages,
   isLoading,
@@ -181,8 +244,11 @@ export const MessageList = memo(function MessageList({
   streamingReasoning = "",
   thinkingDuration = 0,
   todos = [],
-  scrollerRef,
+  onLoadEarlier,
+  atBottomStateChange,
 }: MessageListProps): React.JSX.Element {
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+
   const visibleMessages = useMemo(
     () =>
       buildRenderableTranscript({
@@ -196,99 +262,61 @@ export const MessageList = memo(function MessageList({
     [messages, isLoading, toolProgress],
   );
 
+  const StreamingFooter = useMemo(() => {
+    if (!isLoading) return null;
+    return (
+      <div className="chat-messages-inner">
+        {!streamingText && !toolProgress && (
+          <ThinkingIndicator text={streamingReasoning} duration={thinkingDuration} />
+        )}
+        {!streamingText && toolProgress && (
+          <ToolProgressIndicator toolProgress={toolProgress} messages={messages} />
+        )}
+        {todos.length > 0 && (
+          <TodoPanel todos={todos} defaultCollapsed />
+        )}
+        {streamingText && !streamingText.startsWith("[HCE COMPACTION") && (
+          <div className="chat-message chat-message-agent">
+            <HermesAvatar />
+            <div className="chat-bubble chat-bubble-agent">
+              <StreamingMarkdown>{stripHceCompaction(streamingText) || streamingText}</StreamingMarkdown>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }, [isLoading, streamingText, streamingReasoning, thinkingDuration, toolProgress, messages, todos]);
+
   return (
-    <div className="chat-messages-inner" ref={scrollerRef}>
-      {visibleMessages.map((msg, i) => {
-        const k = (msg as { kind?: string }).kind;
-        if (k === "tool_group") {
-          return <ToolGroupRow key={msg.id} msg={msg as ToolGroupMessage} />;
-        }
-        if (k === "subagent") {
+    <Virtuoso<RenderTranscriptItem>
+      ref={virtuosoRef}
+      data={visibleMessages}
+      followOutput="smooth"
+      startReached={onLoadEarlier}
+      atBottomStateChange={atBottomStateChange}
+      computeItemKey={(_index, msg) => msg.id}
+      itemContent={(index, msg) =>
+        renderMessage(msg, index, visibleMessages.length, isLoading)
+      }
+      components={{
+        Footer: () => <>{StreamingFooter}</>,
+        List: forwardRef(function VirtuosoList(
+          { style, children, ...props }: any,
+          ref: any,
+        ) {
           return (
-            <SubagentRow
-              key={msg.id}
-              msg={msg as Extract<ChatMessage, { kind: "subagent" }>}
-            />
-          );
-        }
-        if (k === "tool_result") {
-          return (
-            <ToolResultRow
-              key={msg.id}
-              msg={msg as Extract<ChatMessage, { kind: "tool_result" }>}
-            />
-          );
-        }
-        if (k === "system_status") {
-          return (
-            <SystemStatusRow key={msg.id} msg={msg as SystemStatusMessage} />
-          );
-        }
-        if (k === "system_event") {
-          return (
-            <SystemEventRow key={msg.id} msg={msg as SystemEventMessage} />
-          );
-        }
-        if (k === "todo") {
-          const todoMsg = msg as TodoMessage;
-          return (
-            <TodoPanel
-              key={todoMsg.id}
-              todos={todoMsg.todos}
-              defaultCollapsed={true}
-            />
-          );
-        }
-        if (k === "tool_progress") {
-          const progressMsg = msg as Extract<
-            import("./renderTranscript").RenderTranscriptItem,
-            { kind: "tool_progress" }
-          >;
-          return (
-            <div key={progressMsg.id} className="chat-tool-progress-inline">
-              {progressMsg.content}
+            <div
+              ref={ref}
+              {...props}
+              style={style}
+              className="chat-messages-inner"
+            >
+              {children}
             </div>
           );
-        }
-        if (k === "reasoning") {
-          const rMsg = msg as ReasoningMessage;
-          return (
-            <ThinkingBlock
-              key={rMsg.id}
-              text={rMsg.text}
-              duration={rMsg.duration ?? 0}
-            />
-          );
-        }
-        const bubble = msg as Extract<ChatMessage, { role: "user" | "agent" }>;
-        return (
-          <MessageRow
-            key={msg.id}
-            msg={bubble}
-            isLast={i === visibleMessages.length - 1}
-            isLoading={isLoading}
-          />
-        );
-      })}
-      {/* Live streaming content — same container prevents jump on commit */}
-      {isLoading && !streamingText && !toolProgress && (
-        <ThinkingIndicator text={streamingReasoning} duration={thinkingDuration ?? 0} />
-      )}
-      {isLoading && !streamingText && toolProgress && (
-        <ToolProgressIndicator toolProgress={toolProgress} messages={messages} />
-      )}
-      {isLoading && todos.length > 0 && (
-        <TodoPanel todos={todos} defaultCollapsed />
-      )}
-      {isLoading && streamingText && !streamingText.startsWith("[HCE COMPACTION") && (
-        <div className="chat-message chat-message-agent">
-          <HermesAvatar />
-          <div className="chat-bubble chat-bubble-agent">
-            <StreamingMarkdown>{stripHceCompaction(streamingText) || streamingText}</StreamingMarkdown>
-          </div>
-        </div>
-      )}
-    </div>
+        }),
+      }}
+    />
   );
 });
 

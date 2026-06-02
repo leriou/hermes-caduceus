@@ -16,7 +16,6 @@ import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 
 import { MessageList } from "./MessageList";
-import { MessageTimelineNavigator } from "./MessageTimelineNavigator";
 import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
 import { ApprovalModal } from "./ApprovalModal";
 import { InteractionCenter } from "./InteractionCenter";
@@ -41,6 +40,7 @@ import { buildChatTranscript } from "./transcriptUtils";
 import { createSystemEvent, systemEventFromError } from "./systemEvents";
 import { createTauriChatGatewayClient } from "./tauriChatGatewayClient";
 import type { ChatMessage } from "./types";
+import type { VirtuosoHandle } from "react-virtuoso";
 
 export type { ChatMessage } from "./types";
 
@@ -179,6 +179,13 @@ function Chat({
     }
   }, [isLoading, streamingReasoning]);
 
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+
+  const scrollToBottomVirtuoso = useCallback(
+    () => virtuosoRef.current?.scrollToIndex({ index: "LAST", behavior: "smooth" }),
+    [],
+  );
+
   // --- Extracted hooks ---
 
   const { handleLoadEarlierMessages } = useLoadEarlier({
@@ -189,14 +196,15 @@ function Chat({
     profile,
     setMessages,
     messagesRef,
+    onPrepended: useCallback(
+      (count: number) => virtuosoRef.current?.adjustForPrependedItems({ prepended: count }),
+      [],
+    ),
   });
 
-  const { containerRef, setContainerRef, userScrolledUp, scrollToBottom } = useChatScroll(
+  const { userScrolledUp, scrollToBottom, handleAtBottomChange } = useChatScroll(
     messages,
-    isLoading,
-    handleLoadEarlierMessages,
-    streamingText,
-    streamingReasoning,
+    scrollToBottomVirtuoso,
   );
 
   const modelConfig = useModelConfig(profile);
@@ -597,7 +605,7 @@ function Chat({
         onClear={handleClear}
       />
 
-      <div className="chat-messages" ref={setContainerRef}>
+      <div className="chat-messages">
         {messages.length === 0 ? (
           <div className="chat-empty">
             <div className="chat-empty-icon">
@@ -624,10 +632,8 @@ function Chat({
               streamingReasoning={streamingReasoning}
               thinkingDuration={thinkingDuration}
               todos={todos}
-            />
-            <MessageTimelineNavigator
-              messages={messages}
-              containerRef={containerRef}
+              onLoadEarlier={handleLoadEarlierMessages}
+              atBottomStateChange={handleAtBottomChange}
             />
           </>
         )}
