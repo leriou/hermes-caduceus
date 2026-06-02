@@ -5,9 +5,11 @@ import {
 } from "@renderer/lib/hermes-tauri";
 import { useState } from "react";
 import { ArrowRight, ExternalLink } from "../../assets/icons";
-import { PROVIDERS, LOCAL_PRESETS } from "../../constants";
+import { PROVIDERS, LOCAL_PRESETS, DEFAULT_LOCAL_BASE_URL } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import VerifyWarningBanner from "../../components/VerifyWarningBanner";
+import { inferEnvVar } from "../../lib/model-types";
+import { detectProviderFromUrl } from "../../lib/provider-detection";
 import BrandLogo from "../../components/common/BrandLogo";
 
 interface SetupProps {
@@ -26,7 +28,7 @@ function Setup({
   const { t } = useI18n();
   const [selectedProvider, setSelectedProvider] = useState("openrouter");
   const [apiKey, setApiKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState("http://localhost:1234/v1");
+  const [baseUrl, setBaseUrl] = useState(DEFAULT_LOCAL_BASE_URL);
   const [modelName, setModelName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -39,20 +41,11 @@ function Setup({
     setBaseUrl(presetBaseUrl);
   }
 
-  function resolveCustomEnvKey(url: string): string {
+  function resolveEnvKey(url: string): string {
     const preset = LOCAL_PRESETS.find((p) => p.baseUrl === url);
     if (preset?.envKey) return preset.envKey;
-    if (/openrouter\.ai/i.test(url)) return "OPENROUTER_API_KEY";
-    if (/anthropic\.com/i.test(url)) return "ANTHROPIC_API_KEY";
-    if (/openai\.com/i.test(url)) return "OPENAI_API_KEY";
-    if (/huggingface\.co/i.test(url)) return "HF_TOKEN";
-    if (/api\.groq\.com/i.test(url)) return "GROQ_API_KEY";
-    if (/api\.deepseek\.com/i.test(url)) return "DEEPSEEK_API_KEY";
-    if (/api\.together\.xyz/i.test(url)) return "TOGETHER_API_KEY";
-    if (/api\.fireworks\.ai/i.test(url)) return "FIREWORKS_API_KEY";
-    if (/api\.cerebras\.ai/i.test(url)) return "CEREBRAS_API_KEY";
-    if (/api\.mistral\.ai/i.test(url)) return "MISTRAL_API_KEY";
-    if (/api\.perplexity\.ai/i.test(url)) return "PERPLEXITY_API_KEY";
+    const providerKey = detectProviderFromUrl(url);
+    if (providerKey) return inferEnvVar(providerKey, url);
     return "CUSTOM_API_KEY";
   }
 
@@ -73,7 +66,7 @@ function Setup({
       if (provider.needsKey && provider.envKey) {
         await setEnv(provider.envKey, apiKey.trim());
       } else if (isLocal && apiKey.trim()) {
-        const envKey = resolveCustomEnvKey(baseUrl.trim());
+        const envKey = resolveEnvKey(baseUrl.trim());
         await setEnv(envKey, apiKey.trim());
       }
 

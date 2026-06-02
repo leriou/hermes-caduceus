@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
-import { detectProviderFromUrl } from "./detect-provider";
+import { detectProviderFromUrl } from "../../lib/provider-detection";
 import { PROVIDERS } from "../../constants";
 import { inferEnvVar } from "../../lib/model-types";
 import type { RegisterProviderInput } from "../../lib/model-types";
@@ -103,7 +104,7 @@ export default function ProviderRegistrationModal({
     }
   }
 
-  return (
+  return createPortal(
     <div className="models-modal-overlay" onClick={onClose}>
       <div className="models-modal" onClick={(e) => e.stopPropagation()}>
         <div className="models-modal-header">
@@ -206,6 +207,7 @@ export default function ProviderRegistrationModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

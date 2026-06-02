@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Plus, RefreshCw as Refresh, ChevronDown, ChevronRight, Save } from "lucide-react";
 import { Trash } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
 import { useDiscoveredModels } from "../../hooks/useDiscoveredModels";
-import { CATEGORY_META, CATEGORY_CARDINALITY, ALL_CATEGORIES } from "../../lib/model-types";
+import { CATEGORY_META, CATEGORY_CARDINALITY, ALL_CATEGORIES, CONTEXT_OPTIONS } from "../../lib/model-types";
 import type {
   ClientProvider,
   ClientModel,
@@ -11,7 +12,6 @@ import type {
 } from "../../lib/model-types";
 import BrandLogo from "../../components/common/BrandLogo";
 
-const CONTEXT_OPTIONS = [0, 128000, 200000, 500000, 1000000];
 const CATEGORY_ROW_SPLIT = 7; // first 7 cats in row 1, rest in row 2
 
 interface ProviderGroupProps {
@@ -452,7 +452,7 @@ export default function ProviderGroup({
       )}
 
       {/* Delete Provider Confirmation */}
-      {confirmDeleteProvider && (
+      {confirmDeleteProvider && createPortal(
         <div className="provider-group-delete-dialog">
           <div className="provider-group-delete-text">
             {t("models.deleteProviderConfirm", { name: provider.name })}
@@ -474,7 +474,8 @@ export default function ProviderGroup({
               {t("common.delete")}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

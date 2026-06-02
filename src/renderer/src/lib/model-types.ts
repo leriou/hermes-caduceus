@@ -127,6 +127,9 @@ export const CATEGORY_META: Record<
   },
 };
 
+// ── Context Length Options ─────────────────────────
+export const CONTEXT_OPTIONS = [0, 128_000, 200_000, 500_000, 1_000_000] as const;
+
 // ── Client Store Types ─────────────────────────
 export interface ClientProvider {
   id: string; // UUID, generated on creation
@@ -189,7 +192,7 @@ export function inferEnvVar(providerKey: string, baseUrl: string): string {
     cerebras: "CEREBRAS_API_KEY",
     mistral: "MISTRAL_API_KEY",
     perplexity: "PERPLEXITY_API_KEY",
-    huggingface: "HUGGINGFACE_API_KEY",
+    huggingface: "HF_TOKEN",
     nvidia: "NVIDIA_API_KEY",
     zai: "GLM_API_KEY",
     glm: "GLM_API_KEY",

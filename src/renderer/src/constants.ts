@@ -18,6 +18,9 @@ export interface SectionDef {
 
 // ── Providers ───────────────────────────────────────────
 
+export const DEFAULT_LOCAL_BASE_URL = "http://localhost:1234/v1";
+
+
 export const PROVIDERS = {
   // Ordered for the Providers / model-picker dropdown.  Each value must
   // match a provider name `hermes-agent` recognises (see
@@ -186,7 +189,7 @@ export const PROVIDERS = {
       url: "",
       placeholder: "sk-...",
       configProvider: "custom",
-      baseUrl: "http://localhost:1234/v1",
+      baseUrl: DEFAULT_LOCAL_BASE_URL,
       needsKey: false,
     },
   ],
@@ -238,8 +241,7 @@ export const LOCAL_PRESETS: LocalPreset[] = [
   {
     id: "lmstudio",
     name: "constants.lmstudio",
-    baseUrl: "http://localhost:1234/v1",
-    group: "local",
+    baseUrl: DEFAULT_LOCAL_BASE_URL,
   },
   {
     id: "ollama",
