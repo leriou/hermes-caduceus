@@ -17,14 +17,18 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
   const [expanded, setExpanded] = useState(true);
   const detailRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (expanded && detailRef.current) {
-      detailRef.current.scrollTop = detailRef.current.scrollHeight;
-    }
-  }, [text, expanded]);
-
   const lines = text ? text.split("\n").filter((l) => l.trim()) : [];
   const lineCount = lines.length;
+
+  useEffect(() => {
+    if (expanded && detailRef.current) {
+      requestAnimationFrame(() => {
+        if (detailRef.current) {
+          detailRef.current.scrollTop = detailRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [text, expanded]);
 
   return (
     <div className="chat-message chat-message-agent">
@@ -33,6 +37,16 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
         <div
           className="chat-bubble chat-bubble-agent chat-live-reasoning-bubble"
           onClick={() => setExpanded((prev) => !prev)}
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-label={`Thinking ${formatDuration(duration)}${lineCount > 0 ? `, ${lineCount} lines` : ""}`}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setExpanded((prev) => !prev);
+            }
+          }}
           style={{ cursor: "pointer" }}
         >
           <span className="chat-live-reasoning-dot" />
@@ -59,6 +73,8 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
           <div
             ref={detailRef}
             className="chat-live-reasoning-detail"
+            role="log"
+            aria-live="polite"
           >
             {text}
           </div>
