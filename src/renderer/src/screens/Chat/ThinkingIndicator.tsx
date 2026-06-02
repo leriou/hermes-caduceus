@@ -5,12 +5,17 @@ interface ThinkingIndicatorProps {
   duration: number;
 }
 
+const MAX_VISIBLE_LINES = 3;
+
 export const ThinkingIndicator = memo(function ThinkingIndicator({
   text,
   duration,
 }: ThinkingIndicatorProps): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lines = text ? text.split("\n").filter((l) => l.trim()) : [];
+  const visible = lines.length > MAX_VISIBLE_LINES
+    ? lines.slice(-MAX_VISIBLE_LINES)
+    : lines;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -32,11 +37,14 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
               : `${Math.floor(duration)}ms`}
           </span>
         )}
+        {lines.length > MAX_VISIBLE_LINES && (
+          <span className="chat-live-reasoning-duration">+{lines.length - MAX_VISIBLE_LINES}</span>
+        )}
         <div className="chat-live-reasoning-scroll" ref={scrollRef}>
-          {lines.length > 0 ? (
-            lines.map((line, i) => (
+          {visible.length > 0 ? (
+            visible.map((line, i) => (
               <div key={i} className="chat-live-reasoning-line">
-                {line}
+                {line.length > 120 ? line.slice(0, 117) + "…" : line}
               </div>
             ))
           ) : (
