@@ -160,7 +160,8 @@ pub fn run() {
         tui_tools_configure, tui_tools_list, tui_tools_show, tui_undo, 
         uninstall_skill, unregister_provider, update_cron_job, update_memory_entry, update_model, 
         update_session_title, validate_hermes_home, verify_install, voice_tts,
-        voice_model_status, voice_download_model, voice_start, voice_stop, 
+        voice_model_status, voice_download_model, voice_start, voice_stop,
+        get_plugin_metrics, 
         write_config_yaml, write_memory, write_model_store, write_soul, write_user_profile
     ])
     .build(tauri::generate_context!())

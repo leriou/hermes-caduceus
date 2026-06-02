@@ -758,6 +758,13 @@ export function setPluginEnabled(
   return invoke("set_plugin_enabled", { name, enabled, profile });
 }
 
+export function getPluginMetrics(
+  name?: string,
+  profile?: string,
+): Promise<Array<Record<string, unknown>>> {
+  return invoke("get_plugin_metrics", { name: name || null, profile });
+}
+
 // Credential Pool
 export function getCredentialPool(
   profile?: string,

@@ -19,4 +19,5 @@ export default {
   tools: "Herramientas",
   extensions: "Extensiones",
   system: "Sistema",
+  monitoring: "Monitoring",
 } as const;

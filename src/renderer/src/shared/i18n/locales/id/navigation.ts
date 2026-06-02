@@ -19,4 +19,5 @@ export default {
   tools: "Alat",
   extensions: "Ekstensi",
   system: "Sistem",
+  monitoring: "Monitoring",
 } as const;

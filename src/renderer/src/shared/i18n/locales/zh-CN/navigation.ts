@@ -19,4 +19,5 @@ export default {
   tools: "工具",
   extensions: "扩展",
   system: "系统设置",
+  monitoring: "Hermes 监控",
 } as const;

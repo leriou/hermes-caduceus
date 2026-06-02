@@ -13,6 +13,7 @@ interface UseLoadEarlierOptions {
   profile?: string;
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   messagesRef: React.MutableRefObject<ChatMessage[]>;
+  onPrepended?: (count: number) => void;
 }
 
 export function useLoadEarlier({
@@ -23,6 +24,7 @@ export function useLoadEarlier({
   profile,
   setMessages,
   messagesRef,
+  onPrepended,
 }: UseLoadEarlierOptions) {
   const loadingEarlierRef = useRef(false);
   const noMoreEarlierRef = useRef(false);
@@ -119,18 +121,17 @@ export function useLoadEarlier({
       let chatMessages = toChatMessages(earlier || []);
 
       if (chatMessages.length > 0) {
-        const el = document.querySelector(".chat-messages");
-        const oldHeight = el?.scrollHeight ?? 0;
+        let prependedCount = 0;
         setMessages((prev) => {
           const existingIds = new Set(prev.map((m) => m.id));
           const unique = chatMessages.filter((m) => !existingIds.has(m.id));
           if (unique.length === 0) return prev;
+          prependedCount = unique.length;
           return [...unique, ...prev];
         });
-        requestAnimationFrame(() => {
-          const el = document.querySelector(".chat-messages");
-          if (el) el.scrollTop = el.scrollHeight - oldHeight;
-        });
+        if (prependedCount > 0) {
+          onPrepended?.(prependedCount);
+        }
         return;
       }
 
@@ -150,13 +151,8 @@ export function useLoadEarlier({
           relatedExhaustedRef.current = i;
           continue;
         }
-        const el = document.querySelector(".chat-messages");
-        const oldHeight = el?.scrollHeight ?? 0;
         setMessages((prev) => [...unique, ...prev]);
-        requestAnimationFrame(() => {
-          const el = document.querySelector(".chat-messages");
-          if (el) el.scrollTop = el.scrollHeight - oldHeight;
-        });
+        onPrepended?.(unique.length);
         return;
       }
 
@@ -174,6 +170,7 @@ export function useLoadEarlier({
     profile,
     setMessages,
     messagesRef,
+    onPrepended,
   ]);
 
   return { handleLoadEarlierMessages };

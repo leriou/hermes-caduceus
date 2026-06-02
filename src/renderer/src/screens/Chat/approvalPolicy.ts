@@ -1,7 +1,7 @@
 import type { ApprovalRequest } from "./types";
 import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 
-export type ApprovalMode = "manual" | "countdown" | "auto_approve";
+export type ApprovalMode = "manual" | "countdown" | "auto_approve" | "smart";
 export type ApprovalDecision = "approve" | "deny";
 export type ApprovalDecisionSource = "manual" | "timeout" | "auto" | "judgment";
 
@@ -44,7 +44,7 @@ export function normalizeApprovalPolicy(value: unknown): ApprovalPolicy {
     value && typeof value === "object" ? value : {}
   ) as Partial<ApprovalPolicy>;
   const mode =
-    input.mode === "countdown" || input.mode === "auto_approve"
+    input.mode === "countdown" || input.mode === "auto_approve" || input.mode === "smart"
       ? input.mode
       : "manual";
   const timeoutAction = input.timeoutAction === "approve" ? "approve" : "deny";
@@ -64,8 +64,9 @@ export function normalizeApprovalPolicy(value: unknown): ApprovalPolicy {
 export function getImmediateApprovalDecision(
   policy: ApprovalPolicy,
 ): { decision: ApprovalDecision; source: ApprovalDecisionSource } | null {
-  if (policy.mode !== "auto_approve") return null;
-  return { decision: "approve", source: "auto" };
+  if (policy.mode === "auto_approve") return { decision: "approve", source: "auto" };
+  // "smart" mode is handled by the judgment engine, not here
+  return null;
 }
 
 export function createApprovalHistoryEntry(

@@ -230,6 +230,7 @@ export function useChatInbox({
   const silentTimerRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const analyzingTimerRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const deltaIdleRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const thinkingStartRef = useRef(new Map<string, number>());
 
   function resetTurn(tabId: string): void {
     turnCompletedRef.current.delete(tabId);
@@ -238,6 +239,7 @@ export function useChatInbox({
     flushedTextRef.current.delete(tabId);
     pendingReasoningRef.current.delete(tabId);
     reasoningFlushRef.current.delete(tabId);
+    thinkingStartRef.current.delete(tabId);
     const timer = stuckTimerRef.current.get(tabId);
     if (timer) {
       clearTimeout(timer);
@@ -369,11 +371,14 @@ export function useChatInbox({
       updateTabMessages(tabId, (prev) => {
         const next: ChatMessage[] = [...prev];
         if (reasoning) {
+          const thinkingDuration = thinkingStartRef.current.get(tabId);
+          thinkingStartRef.current.delete(tabId);
           next.push({
             id: `reasoning-stuck-${Date.now()}`,
             kind: "reasoning",
             role: "agent",
             text: reasoning,
+            ...(thinkingDuration ? { duration: Date.now() - thinkingDuration } : {}),
           } satisfies ReasoningMessage);
         }
         if (text) {
@@ -665,7 +670,7 @@ export function useChatInbox({
     }
 
     const REASONING_FLUSH_CHARS = 100;
-    const REASONING_FLUSH_MS = 250;
+    const REASONING_FLUSH_MS = 1000;
 
     function flushReasoning(tabId: string): void {
       reasoningFlushRef.current.delete(tabId);
@@ -824,11 +829,14 @@ export function useChatInbox({
           updateTabMessages(tabId, (prev) => {
             const next: ChatMessage[] = [...prev];
             if (reasoningText) {
+              const thinkingDuration = thinkingStartRef.current.get(tabId);
+              thinkingStartRef.current.delete(tabId);
               next.push({
                 id: `reasoning-${Date.now()}`,
                 kind: "reasoning",
                 role: "agent",
                 text: reasoningText,
+                ...(thinkingDuration ? { duration: Date.now() - thinkingDuration } : {}),
               } satisfies ReasoningMessage);
             }
             const text = finalText || (hadStreaming ? fallbackText : "");
@@ -1154,6 +1162,9 @@ export function useChatInbox({
         // ── Reasoning / Thinking ──────────────────────────────────────
         case "thinking.delta":
         case "reasoning.delta": {
+          if (!thinkingStartRef.current.has(tabId)) {
+            thinkingStartRef.current.set(tabId, Date.now());
+          }
           const text = textFromPayload(payload);
           if (text) {
             pendingReasoningRef.current.set(
@@ -1337,7 +1348,31 @@ export function useChatInbox({
           break;
         }
 
-        // ── Gateway-level errors — always surface to user ────────────
+        // ── Gateway reconnected after process restart ────────────────────
+        case "gateway.reconnected": {
+          const activeTab = activeTabIdRef.current;
+          if (activeTab) {
+            const current = sessionsRef.current.get(activeTab);
+            if (current?.streamingText || current?.streamingReasoning) {
+              console.log("[reconnect] Streaming state preserved after reconnection, continuing.");
+            }
+          }
+          break;
+        }
+
+        // ── Permanent connection loss (max restarts) ─────────────────────
+        case "gateway.connection_lost": {
+          updateTabMessages(tabId, (prev) => [
+            ...prev,
+            notifyGatewayError(event.type, payload),
+          ]);
+          if (state?.isLoading) {
+            finalizeStuckTurn(tabId, state?.hermesSessionId, false);
+          }
+          break;
+        }
+
+        // ── Gateway-level errors — surface to user but preserve streaming state ──
         case "gateway.error":
         case "gateway.protocol_error":
         case "gateway.start_timeout": {
@@ -1345,9 +1380,8 @@ export function useChatInbox({
             ...prev,
             notifyGatewayError(event.type, payload),
           ]);
-          if (state?.isLoading) {
-            updateTab(tabId, { isLoading: false, toolProgress: null });
-          }
+          // Don't clear streaming state — the backend will attempt reconnection
+          // and may resume the session. State is cleared on gateway.connection_lost.
           break;
         }
       }

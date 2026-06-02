@@ -86,8 +86,22 @@ function classifyApprovalRisk(request: ApprovalRequest): JudgmentAdvice {
     };
   }
 
+  // Explicitly safe: reads, queries, non-destructive inspections
+  const safe =
+    /\bcat\b|\bread_file\b|\bhead\b|\btail\b|\bgrep\b|\bfind\b|\bls\b|\bwc\b|\bfile\b|\bstat\b|\bdu\b|\bwhich\b|\btype\b|\becho\b|\benv\b|\bprintenv\b|\bgit\s+(status|log|diff|branch|show|remote|tag|stash\s+list)|\bcurl\s+-(?:head|I)\b|\bpython3?\s+-c\s+["']import\s+ast/.test(text);
+  if (safe) {
+    return {
+      kind: "approval",
+      decision: "approve",
+      confidence: 0.92,
+      risk: "low",
+      reason: "Read-only or inspection command, no side effects.",
+      suggestedAction: "auto_approve",
+    };
+  }
+
   const testLike =
-    /\btest\b|typecheck|lint|vitest|tsc --noemit|cargo test|pytest/.test(text);
+    /\btest\b|typecheck|lint|vitest|tsc --noemit|cargo test|pytest|npm\s+(test|run\s+test)|pnpm\s+(test|run\s+test)|yarn\s+test/.test(text);
   if (testLike) {
     return {
       kind: "approval",
@@ -95,7 +109,35 @@ function classifyApprovalRisk(request: ApprovalRequest): JudgmentAdvice {
       confidence: 0.88,
       risk: "low",
       reason: "Command looks like a local test or validation command.",
-      suggestedAction: "ask_user",
+      suggestedAction: "auto_approve",
+    };
+  }
+
+  // Build / install commands: medium risk (may change fs but usually safe)
+  const buildLike =
+    /\bnpm\s+install\b|\bpnpm\s+install\b|\byarn\s+install\b|\bpip\s+install\b|\bcargo\s+build\b|\bmake\b|\bnpm\s+run\s+build\b|\bpnpm\s+run\s+build\b|\btsc\b/.test(text);
+  if (buildLike) {
+    return {
+      kind: "approval",
+      decision: "approve",
+      confidence: 0.75,
+      risk: "medium",
+      reason: "Build or install command, low risk but modifies node_modules or target.",
+      suggestedAction: "auto_approve",
+    };
+  }
+
+  // Git operations: medium risk (safe ops already matched above)
+  const gitOps =
+    /\bgit\s+(add|commit|push|pull|checkout|merge|rebase|fetch|stash)/.test(text);
+  if (gitOps) {
+    return {
+      kind: "approval",
+      decision: "approve",
+      confidence: 0.78,
+      risk: "medium",
+      reason: "Git version control operation.",
+      suggestedAction: "auto_approve",
     };
   }
 

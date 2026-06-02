@@ -28,6 +28,7 @@ export interface ReasoningMessage {
   kind: "reasoning";
   role: "agent";
   text: string;
+  duration?: number; // thinking time in ms
 }
 
 export interface ToolCallMessage {

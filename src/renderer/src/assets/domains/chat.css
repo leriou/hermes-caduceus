@@ -428,19 +428,24 @@
 
 .chat-messages {
   flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-canvas);
+  position: relative;
+}
+
+/* Virtuoso scroll container — fills the chat-messages wrapper */
+.chat-messages [data-virtuoso-scroller] {
   overflow-y: auto;
   overscroll-behavior: none;
   padding: 12px 0 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--surface-canvas);
-  align-items: center;
 }
 
 .chat-messages-inner {
   width: 100%;
   max-width: var(--chat-column-width, 880px);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2870,6 +2875,21 @@
   color: var(--text-muted);
   font-family: var(--font-mono, monospace);
   flex-shrink: 0;
+}
+
+.chat-live-reasoning-detail {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  background: rgba(128, 90, 213, 0.08);
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 6px 10px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 600px;
 }
 
 .chat-live-reasoning-snippet {

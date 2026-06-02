@@ -19,4 +19,5 @@ export default {
   tools: "工具",
   extensions: "擴展",
   system: "系統",
+  monitoring: "Monitoring",
 } as const;

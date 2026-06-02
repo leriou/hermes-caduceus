@@ -6,8 +6,8 @@ describe("buildRenderableTranscript", () => {
   it("processes historical messages by merging continuation labels, grouping tool calls, and filtering empty bubbles", () => {
     const messages: ChatMessage[] = [
       { id: "u1", role: "user", content: "Hello" },
-      { id: "u2", role: "user", content: "Message #2" }, // continuation label to be filtered/merged
-      { id: "a1", role: "agent", content: "" }, // empty bubble to be filtered
+      { id: "u2", role: "user", content: "Message #2" },
+      { id: "a1", role: "agent", content: "" },
       {
         id: "tc1",
         kind: "tool_call",
@@ -49,11 +49,6 @@ describe("buildRenderableTranscript", () => {
       toolProgress: null,
     });
 
-    // 预期：
-    // 1. "u2" (continuation) 被合并/移除
-    // 2. "a1" (空 bubble) 被过滤
-    // 3. "tc1" & "tr1", "tc2" & "tr2" 被合并且由于 name 相同被 group 进 "tool_group"
-    // 4. "a2" 被保留
     expect(result.map((m) => m.id)).toEqual(["u1", "group-tc1-tc2", "a2"]);
 
     const group = result[1] as any;
@@ -63,7 +58,7 @@ describe("buildRenderableTranscript", () => {
     expect(group.calls[1].result).toBe("file content 2");
   });
 
-  it("appends live_reasoning and omits typing indicator when streaming reasoning text during loading without toolProgress", () => {
+  it("streaming reasoning is not injected into transcript — rendered directly by MessageList", () => {
     const messages: ChatMessage[] = [
       { id: "u1", role: "user", content: "Hello" },
     ];
@@ -75,40 +70,12 @@ describe("buildRenderableTranscript", () => {
       streamingReasoning: "Thinking about the question...",
     });
 
-    expect(result).toHaveLength(2);
+    // Streaming content is rendered by MessageList's Footer, not in transcript
+    expect(result).toHaveLength(1);
     expect(result[0].id).toBe("u1");
-    expect(result[1]).toEqual({
-      id: "live-reasoning",
-      kind: "live_reasoning",
-      role: "agent",
-      text: "Thinking about the question...",
-    });
   });
 
-  it("appends both live_reasoning and typing when toolProgress is present during streaming reasoning", () => {
-    const messages: ChatMessage[] = [
-      { id: "u1", role: "user", content: "Hello" },
-    ];
-
-    const result = buildRenderableTranscript({
-      messages,
-      isLoading: true,
-      toolProgress: "searching codebase...",
-      streamingReasoning: "Thinking about the question...",
-    });
-
-    expect(result).toHaveLength(3);
-    expect(result[0].id).toBe("u1");
-    expect(result[1].kind).toBe("live_reasoning");
-    expect(result[2]).toEqual({
-      id: "typing",
-      kind: "typing",
-      role: "agent",
-      toolProgress: "searching codebase...",
-    });
-  });
-
-  it("appends live_assistant when streaming assistant text during loading", () => {
+  it("streaming text is not injected into transcript — rendered directly by MessageList", () => {
     const messages: ChatMessage[] = [
       { id: "u1", role: "user", content: "Hello" },
     ];
@@ -120,62 +87,8 @@ describe("buildRenderableTranscript", () => {
       streamingText: "Hello there",
     });
 
-    expect(result).toHaveLength(2);
+    expect(result).toHaveLength(1);
     expect(result[0].id).toBe("u1");
-    expect(result[1]).toEqual({
-      id: "live-assistant",
-      kind: "live_assistant",
-      role: "agent",
-      content: "Hello there",
-    });
-  });
-
-  it("appends both live_reasoning and live_assistant in order when both are streaming", () => {
-    const messages: ChatMessage[] = [
-      { id: "u1", role: "user", content: "Hello" },
-    ];
-
-    const result = buildRenderableTranscript({
-      messages,
-      isLoading: true,
-      toolProgress: null,
-      streamingReasoning: "Hmm...",
-      streamingText: "Hello there",
-    });
-
-    expect(result).toHaveLength(3);
-    expect(result[0].id).toBe("u1");
-    expect(result[1]).toMatchObject({
-      id: "live-reasoning",
-      kind: "live_reasoning",
-      text: "Hmm...",
-    });
-    expect(result[2]).toMatchObject({
-      id: "live-assistant",
-      kind: "live_assistant",
-      content: "Hello there",
-    });
-  });
-
-  it("renders typing indicator when isLoading and lastMessageIsAgent is false and no streaming text", () => {
-    const messages: ChatMessage[] = [
-      { id: "u1", role: "user", content: "Hello" },
-    ];
-
-    const result = buildRenderableTranscript({
-      messages,
-      isLoading: true,
-      toolProgress: "Searching files...",
-    });
-
-    expect(result).toHaveLength(2);
-    expect(result[0].id).toBe("u1");
-    expect(result[1]).toEqual({
-      id: "typing",
-      kind: "typing",
-      role: "agent",
-      toolProgress: "Searching files...",
-    });
   });
 
   it("renders inline tool progress when isLoading and lastMessageIsAgent is true", () => {
@@ -224,7 +137,6 @@ describe("buildRenderableTranscript", () => {
       toolProgress: null,
     });
 
-    // Should group the tool call even without a matching tool.start
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe("u1");
     expect(result[1]).toMatchObject({
@@ -255,7 +167,6 @@ describe("buildRenderableTranscript", () => {
       toolProgress: null,
     });
 
-    // Empty assistant bubble after tool group should be filtered
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe("u1");
     expect(result[1].kind).toBe("tool_group");
@@ -289,32 +200,6 @@ describe("buildRenderableTranscript", () => {
     const result2 = buildRenderableTranscript(args);
 
     expect(result1).toEqual(result2);
-  });
-
-  it("renders inline tool progress when isLoading and streamingText is present, even if lastMessageIsAgent is false", () => {
-    const messages: ChatMessage[] = [
-      { id: "u1", role: "user", content: "Hello" },
-    ];
-
-    const result = buildRenderableTranscript({
-      messages,
-      isLoading: true,
-      toolProgress: "Computing...",
-      streamingText: "Result: ",
-    });
-
-    expect(result).toHaveLength(3);
-    expect(result[0].id).toBe("u1");
-    expect(result[1]).toMatchObject({
-      kind: "live_assistant",
-      content: "Result: ",
-    });
-    expect(result[2]).toEqual({
-      id: "tool-progress",
-      kind: "tool_progress",
-      role: "agent",
-      content: "Computing...",
-    });
   });
 
   it("merges consecutive agent bubbles within a turn", () => {
@@ -386,5 +271,24 @@ describe("buildRenderableTranscript", () => {
     );
     expect(agentTexts).toHaveLength(1);
     expect((agentTexts[0] as any).content).toBe("First part\nSecond part");
+  });
+
+  it("passes reasoning messages through to MessageList for rendering", () => {
+    const messages: ChatMessage[] = [
+      { id: "u1", role: "user", content: "Hello" },
+      { id: "r1", kind: "reasoning", role: "agent", text: "Thinking..." },
+      { id: "a1", role: "agent", content: "Answer" },
+    ];
+
+    const result = buildRenderableTranscript({
+      messages,
+      isLoading: false,
+      toolProgress: null,
+    });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].id).toBe("u1");
+    expect(result[1]).toMatchObject({ kind: "reasoning", text: "Thinking..." });
+    expect(result[2].id).toBe("a1");
   });
 });
