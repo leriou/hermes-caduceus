@@ -210,11 +210,7 @@ function Chat({
   );
 
   const modelConfig = useModelConfig(profile);
-  const {
-    fastMode,
-    toggle: toggleFastMode,
-    set: setFastTier,
-  } = useFastMode(profile);
+  const { set: setFastTier } = useFastMode(profile);
 
   const addAgentMessage = useCallback(
     (content: string) => {
@@ -596,13 +592,11 @@ function Chat({
         sessionTitle={session.sessionTitle || externalTitle}
         sessionModel={session.sessionModel}
         usage={usage}
-        fastMode={fastMode}
         hasMessages={messages.length > 0}
         contextFolder={session.contextFolder}
         showContextFolder={!remoteMode}
         onPickFolder={handlePickFolder}
         onClearFolder={handleClearFolder}
-        onToggleFast={toggleFastMode}
         onNewChat={onNewChat}
         onToggleSessionDrawer={onToggleSessionDrawer}
       />

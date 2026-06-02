@@ -1,6 +1,6 @@
 import { copyToClipboard } from "@renderer/lib/hermes-tauri";
 import { memo } from "react";
-import { Plus, Zap, FolderOpen, X, Copy, Menu } from "lucide-react";
+import { Plus, FolderOpen, X, Copy, Menu } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
 import { baseSessionTitle } from "./sessionDisplay";
 import type { UsageState } from "./types";
@@ -10,7 +10,6 @@ interface ChatHeaderProps {
   sessionTitle?: string | null;
   sessionModel?: string | null;
   usage: UsageState | null;
-  fastMode: boolean;
   hasMessages: boolean;
   /** Working folder bound to this conversation (issue #27), or null. */
   contextFolder: string | null;
@@ -19,7 +18,6 @@ interface ChatHeaderProps {
   showContextFolder: boolean;
   onPickFolder: () => void;
   onClearFolder: () => void;
-  onToggleFast: () => void;
   onNewChat?: () => void;
   onToggleSessionDrawer?: () => void;
 }
@@ -71,13 +69,11 @@ export const ChatHeader = memo(function ChatHeader({
   sessionTitle,
   sessionModel,
   usage,
-  fastMode,
   hasMessages,
   contextFolder,
   showContextFolder,
   onPickFolder,
   onClearFolder,
-  onToggleFast,
   onNewChat,
   onToggleSessionDrawer,
 }: ChatHeaderProps): React.JSX.Element {
@@ -149,22 +145,6 @@ export const ChatHeader = memo(function ChatHeader({
               <FolderOpen size={14} />
             </button>
           ))}
-        <div className="chat-fast-wrapper">
-          <button
-            className={`btn-ghost chat-fast-btn ${fastMode ? "chat-fast-active" : ""}`}
-            onClick={onToggleFast}
-          >
-            <Zap size={14} />
-          </button>
-          <div className="chat-fast-popover">
-            <strong>
-              {fastMode ? t("chat.fastModeOn") : t("chat.fastMode")}
-            </strong>
-            <span>
-              {fastMode ? t("chat.fastModeActive") : t("chat.fastModeInactive")}
-            </span>
-          </div>
-        </div>
         {onNewChat && (
           <button
             className="btn-ghost chat-clear-btn"
