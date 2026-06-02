@@ -165,6 +165,9 @@ const EVENT_CLASSIFICATIONS: Record<string, EventClassification> = {
   "review.summary": { category: "status", safeAfterAbort: true },
   "background.complete": { category: "status", safeAfterAbort: true },
   "gateway.ready": { category: "status", safeAfterAbort: true },
+  "gateway.reconnecting": { category: "status", safeAfterAbort: true },
+  "gateway.reconnected": { category: "status", safeAfterAbort: true },
+  "gateway.connection_lost": { category: "terminal", safeAfterAbort: true },
   "skin.changed": { category: "status", safeAfterAbort: true },
 
   // Interaction requests — require user action, discard after abort
