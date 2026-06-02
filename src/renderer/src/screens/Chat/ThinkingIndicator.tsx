@@ -20,10 +20,12 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
   const lines = text ? text.split("\n").filter((l) => l.trim()) : [];
   const lineCount = lines.length;
 
-  // Auto-scroll to bottom on text update
   useEffect(() => {
     if (expanded && detailRef.current) {
-      detailRef.current.scrollTop = detailRef.current.scrollHeight;
+      const el = detailRef.current;
+      requestAnimationFrame(() => {
+        el.scrollTop = el.scrollHeight;
+      });
     }
   }, [text, expanded]);
 
@@ -31,10 +33,19 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
     <div className="chat-message chat-message-agent">
       <HermesAvatar />
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {/* Pill row */}
         <div
           className="chat-bubble chat-bubble-agent chat-live-reasoning-bubble"
           onClick={() => setExpanded((prev) => !prev)}
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-label={`Thinking ${formatDuration(duration)}${lineCount > 0 ? `, ${lineCount} lines` : ""}`}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setExpanded((prev) => !prev);
+            }
+          }}
           style={{ cursor: "pointer" }}
         >
           <span className="chat-live-reasoning-dot" />
@@ -55,24 +66,12 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
           </span>
         </div>
 
-        {/* Detail panel */}
         {expanded && text && (
           <div
             ref={detailRef}
-            style={{
-              fontFamily: "var(--font-mono, monospace)",
-              fontSize: 12,
-              background: "rgba(128, 90, 213, 0.08)",
-              maxHeight: 200,
-              overflowY: "auto",
-              padding: "6px 10px",
-              borderRadius: 8,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              color: "var(--text-muted)",
-              lineHeight: 1.5,
-              maxWidth: 600,
-            }}
+            className="chat-live-reasoning-detail"
+            role="log"
+            aria-live="polite"
           >
             {text}
           </div>
