@@ -88,6 +88,7 @@ interface ChatProps {
   pendingPrompt?: string | null;
   onConsumePendingPrompt?: () => void;
   wsGatewayClient?: import("@renderer/lib/wsGatewayClient").WsGatewayClient;
+  onToggleSessionDrawer?: () => void;
 }
 
 function Chat({
@@ -115,6 +116,7 @@ function Chat({
   pendingPrompt,
   onConsumePendingPrompt,
   wsGatewayClient,
+  onToggleSessionDrawer,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [remoteMode, setRemoteMode] = useState(false);
@@ -602,7 +604,7 @@ function Chat({
         onClearFolder={handleClearFolder}
         onToggleFast={toggleFastMode}
         onNewChat={onNewChat}
-        onClear={handleClear}
+        onToggleSessionDrawer={onToggleSessionDrawer}
       />
 
       <div className="chat-messages">

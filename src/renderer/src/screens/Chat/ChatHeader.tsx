@@ -1,6 +1,6 @@
 import { copyToClipboard } from "@renderer/lib/hermes-tauri";
 import { memo } from "react";
-import { Trash2 as Trash, Plus, Zap, FolderOpen, X, Copy } from "lucide-react";
+import { Plus, Zap, FolderOpen, X, Copy, Menu } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
 import { baseSessionTitle } from "./sessionDisplay";
 import type { UsageState } from "./types";
@@ -21,7 +21,7 @@ interface ChatHeaderProps {
   onClearFolder: () => void;
   onToggleFast: () => void;
   onNewChat?: () => void;
-  onClear: () => void;
+  onToggleSessionDrawer?: () => void;
 }
 
 function UsageBadge({ usage }: { usage: UsageState }): React.JSX.Element {
@@ -79,7 +79,7 @@ export const ChatHeader = memo(function ChatHeader({
   onClearFolder,
   onToggleFast,
   onNewChat,
-  onClear,
+  onToggleSessionDrawer,
 }: ChatHeaderProps): React.JSX.Element {
   const { t } = useI18n();
   const displayTitle = baseSessionTitle(sessionTitle);
@@ -87,6 +87,15 @@ export const ChatHeader = memo(function ChatHeader({
   return (
     <div className="chat-header drag-surface" data-tauri-drag-region>
       <div className="chat-header-left">
+        {onToggleSessionDrawer && (
+          <button
+            className="btn-ghost chat-session-drawer-btn"
+            onClick={onToggleSessionDrawer}
+            title={t("navigation.sessions") || "Sessions"}
+          >
+            <Menu size={16} />
+          </button>
+        )}
         <div className="chat-header-title">
           {displayTitle ||
             (sessionId
@@ -163,17 +172,6 @@ export const ChatHeader = memo(function ChatHeader({
             title={t("chat.newChat")}
           >
             <Plus size={16} />
-          </button>
-        )}
-        {hasMessages && (
-          <button
-            className="btn-ghost chat-clear-btn"
-            onClick={() => {
-              if (window.confirm(t("chat.clearChatConfirm"))) onClear();
-            }}
-            title={t("chat.clearChat")}
-          >
-            <Trash size={16} />
           </button>
         )}
       </div>

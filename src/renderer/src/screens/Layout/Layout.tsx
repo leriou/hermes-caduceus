@@ -359,7 +359,6 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
           <div className="chat-pane chat-pane--immersive">
             {sessionDrawerOpen && (<><div className="session-drawer-backdrop" onClick={() => setSessionDrawerOpen(false)} /><div className="session-drawer"><SessionSidebar sessions={sessionManager.getSidebarEntries()} activeSessionId={sessionManager.activeTabId} activeDbSessionId={sessionManager.getActive()?.dbSessionId ?? null} onSelect={(tabId) => { sessionManager.switchTab(tabId); setSessionDrawerOpen(false); }} onNewChat={() => { handleNewChat(); setSessionDrawerOpen(false); }} onClose={sessionManager.closeTab} onResumeSession={(sid) => { handleResumeSession(sid); setSessionDrawerOpen(false); }} /></div></>)}
             <div style={paneStyle}>
-              <div className="chat-session-drawer-toggle"><button onClick={() => setSessionDrawerOpen((o) => !o)} title={t("navigation.sessions") || "Sessions"}><Layers size={16} /></button></div>
               {sessionManager.tabOrder.map((tabId) => {
                 const tab = sessionManager.sessions.get(tabId);
                 if (!tab) return null;
@@ -372,6 +371,7 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
                     pendingModelSwitchMessageId={tab.pendingModelSwitchMessageId} todos={tab.todos} profile={activeProfile} visible={visible}
                     pendingPrompt={pendingPrompt} onConsumePendingPrompt={() => setPendingPrompt(null)} onNewChat={handleNewChat}
                     wsGatewayClient={wsClient}
+                    onToggleSessionDrawer={() => setSessionDrawerOpen((o) => !o)}
                     onSessionStateChange={(patch) => { sessionManager.updateTab(tabId, {
                       ...(patch.hermesSessionId !== undefined ? { hermesSessionId: patch.hermesSessionId } : {}), ...(patch.dbSessionId !== undefined ? { dbSessionId: patch.dbSessionId } : {}),
                       ...(patch.title !== undefined ? { title: patch.title } : {}), ...(patch.model !== undefined ? { model: patch.model } : {}),
