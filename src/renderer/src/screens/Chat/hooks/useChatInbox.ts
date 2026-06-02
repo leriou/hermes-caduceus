@@ -326,19 +326,15 @@ export function useChatInbox({
   function finalizeStuckTurn(tabId: string, sid?: string, showWarning = true): void {
     const current = sessionsRef.current.get(tabId);
     if (!current?.isLoading && !current?.toolProgress) return;
-    // Flush pending reasoning before reading state
+    // Compute reasoning directly from ref + old state — avoid React batching race
     const pR = pendingReasoningRef.current.get(tabId) ?? "";
     if (pR) {
       pendingReasoningRef.current.delete(tabId);
-      updateTab(tabId, {
-        streamingReasoning: `${current.streamingReasoning ?? ""}${pR}`,
-      });
     }
-    const currentAfterFlush = sessionsRef.current.get(tabId) ?? current;
+    const reasoning = `${current?.streamingReasoning ?? ""}${pR}`;
     const pending = pendingChunksRef.current.get(tabId) ?? "";
     const flushed = flushedTextRef.current.get(tabId) ?? "";
-    const text = `${flushed}${pending}` || currentAfterFlush.streamingText || "";
-    const reasoning = currentAfterFlush.streamingReasoning || "";
+    const text = `${flushed}${pending}` || current?.streamingText || "";
     const stuckDuration = stuckStartRef.current.has(tabId)
       ? Math.round((Date.now() - (stuckStartRef.current.get(tabId) ?? Date.now())) / 1000)
       : 0;
@@ -590,7 +586,9 @@ export function useChatInbox({
         pendingChunksRef.current.delete(tabId);
       }
 
-      // Flush pending reasoning chunks before reading state
+      // Flush pending reasoning chunks directly from ref — do NOT rely on
+      // React state (sessionsRef) because updateTab is batched and the ref
+      // may not reflect the new streamingReasoning value yet.
       const pendingReasoningFrame = reasoningFlushRef.current.get(tabId);
       if (pendingReasoningFrame != null) {
         clearTimeout(pendingReasoningFrame as unknown as number);
@@ -599,17 +597,15 @@ export function useChatInbox({
       const pendingReasoning = pendingReasoningRef.current.get(tabId) ?? "";
       if (pendingReasoning) {
         pendingReasoningRef.current.delete(tabId);
-        const st = sessionsRef.current.get(tabId);
-        updateTab(tabId, {
-          streamingReasoning: `${st?.streamingReasoning ?? ""}${pendingReasoning}`,
-        });
       }
+
+      const state = sessionsRef.current.get(tabId);
+      const prevReasoning = state?.streamingReasoning ?? "";
+      const reasoning = `${prevReasoning}${pendingReasoning}`;
 
       const flushedText = flushedTextRef.current.get(tabId) ?? "";
       flushedTextRef.current.delete(tabId);
-      const state = sessionsRef.current.get(tabId);
       const text = `${flushedText}${pendingChunk}` || state?.streamingText || "";
-      const reasoning = state?.streamingReasoning ?? "";
 
       if (!text && !reasoning) return;
 
@@ -669,8 +665,8 @@ export function useChatInbox({
       flushFramesRef.current.set(tabId, id as unknown as Symbol);
     }
 
-    const REASONING_FLUSH_CHARS = 100;
-    const REASONING_FLUSH_MS = 1000;
+    const REASONING_FLUSH_CHARS = 20;
+    const REASONING_FLUSH_MS = 200;
 
     function flushReasoning(tabId: string): void {
       reasoningFlushRef.current.delete(tabId);
@@ -789,7 +785,7 @@ export function useChatInbox({
           const pendingChunk = pendingChunksRef.current.get(tabId) ?? "";
           pendingChunksRef.current.delete(tabId);
 
-          // Flush pending reasoning before reading state
+          // Flush pending reasoning directly from ref — same race fix as commitStreaming.
           const rFrame = reasoningFlushRef.current.get(tabId);
           if (rFrame != null) {
             clearTimeout(rFrame as unknown as number);
@@ -798,17 +794,15 @@ export function useChatInbox({
           const pReasoning = pendingReasoningRef.current.get(tabId) ?? "";
           if (pReasoning) {
             pendingReasoningRef.current.delete(tabId);
-            updateTab(tabId, {
-              streamingReasoning: `${state?.streamingReasoning ?? ""}${pReasoning}`,
-            });
           }
-          const stateFlushed = sessionsRef.current.get(tabId);
+          const prevReasoning = state?.streamingReasoning ?? "";
+          const accumulatedReasoning = `${prevReasoning}${pReasoning}`;
 
           const finalText = textFromPayload(payload);
           const reasoningText = stringField(
             payload,
             "reasoning",
-            stateFlushed?.streamingReasoning || state?.streamingReasoning || "",
+            accumulatedReasoning,
           );
           const flushedText = flushedTextRef.current.get(tabId) ?? "";
           flushedTextRef.current.delete(tabId);
@@ -1165,13 +1159,25 @@ export function useChatInbox({
           if (!thinkingStartRef.current.has(tabId)) {
             thinkingStartRef.current.set(tabId, Date.now());
           }
+          const isFirstChunk = !pendingReasoningRef.current.has(tabId)
+            && !state?.streamingReasoning;
           const text = textFromPayload(payload);
           if (text) {
             pendingReasoningRef.current.set(
               tabId,
               `${pendingReasoningRef.current.get(tabId) ?? ""}${text}`,
             );
-            scheduleReasoningFlush(tabId);
+            // Ensure isLoading is true even if message.start was missed
+            if (!state?.isLoading) {
+              updateTab(tabId, { isLoading: true, toolProgress: null });
+            }
+            // Flush immediately on first chunk so the ThinkingIndicator
+            // shows content right away instead of waiting for the timer
+            if (isFirstChunk) {
+              flushReasoning(tabId);
+            } else {
+              scheduleReasoningFlush(tabId);
+            }
             scheduleDeltaIdle(tabId, runtimeSid);
           }
           scheduleStuckProbe(tabId, runtimeSid);
