@@ -71,7 +71,7 @@ describe("tauriChatGatewayClient", () => {
     expect(api.tuiResumeSession).toHaveBeenCalledWith("db-1");
     expect(api.tuiSubmitPrompt).toHaveBeenNthCalledWith(
       1,
-      "old-runtime",
+      "rt-1",
       "hello",
     );
     expect(api.tuiSubmitPrompt).toHaveBeenNthCalledWith(

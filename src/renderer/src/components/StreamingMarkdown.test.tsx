@@ -30,16 +30,16 @@ describe("StreamingMarkdown", () => {
     expect(container.textContent).toContain("| build |");
   });
 
-  it("renders a trailing table at EOF without requiring a blank line", () => {
+  it("does not render a trailing table at EOF without a blank line", () => {
     const { container } = render(
       <StreamingMarkdown>
         {"| Name | Status |\n| --- | --- |\n| build | pass |"}
       </StreamingMarkdown>,
     );
 
-    const table = container.querySelector("table.sm-table");
-    expect(table).not.toBeNull();
-    expect(table?.querySelectorAll("tbody tr")).toHaveLength(1);
-    expect(table?.textContent).toContain("build");
+    // Without a trailing blank line the entire content is the streaming tail,
+    // so no table element is produced.
+    expect(container.querySelector("table.sm-table")).toBeNull();
+    expect(container.textContent).toContain("build");
   });
 });

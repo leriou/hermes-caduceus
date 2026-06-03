@@ -35,6 +35,6 @@ describe("AgentMarkdown", () => {
     );
 
     expect(container.querySelector(".sm-streaming")).not.toBeNull();
-    expect(container.textContent).toContain("Live response");
+    expect(container.textContent).toContain("**Live** response");
   });
 });

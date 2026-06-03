@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectProviderFromUrl } from "../src/renderer/src/screens/Models/detect-provider";
+import { detectProviderFromUrl } from "../src/renderer/src/lib/provider-detection";
 
 describe("detectProviderFromUrl", () => {
   it("returns null for empty input", () => {
