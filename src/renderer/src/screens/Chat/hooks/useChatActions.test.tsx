@@ -123,8 +123,8 @@ describe("useChatActions", () => {
       expect(result_messages).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            role: "agent",
-            content: expect.stringContaining("Error"),
+            kind: "system_event",
+            content: expect.stringContaining("gateway down"),
           }),
         ]),
       );
