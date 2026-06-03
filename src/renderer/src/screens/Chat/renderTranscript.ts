@@ -155,10 +155,11 @@ export function buildRenderableTranscript({
   streamingReasoning: _streamingReasoning = "",
   todos: _todos = [],
 }: BuildRenderableTranscriptArgs): RenderTranscriptItem[] {
+  // Drop reasoning messages — only shown during live streaming.
   // Drop HCE compaction messages — they are system-internal, not for display.
   // Strip routing hints from user messages — they are model-internal, not for display.
   const filtered = messages
-    .filter((m) => !isHceCompaction(m))
+    .filter((m) => kindOf(m) !== "reasoning" && !isHceCompaction(m))
     .map((m) => {
       if (isBubble(m) && m.role === "user") {
         const stripped = stripRoutingHint((m.content as string) || "");

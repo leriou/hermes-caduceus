@@ -10,10 +10,8 @@ import { buildRenderableTranscript, stripHceCompaction } from "./renderTranscrip
 import { TodoPanel } from "../../components/common/TodoPanel";
 import { ChatEventRow } from "./ChatEventRow";
 import { ThinkingIndicator } from "./ThinkingIndicator";
-import { ThinkingBlock } from "./ThinkingBlock";
 import type {
   ChatMessage,
-  ReasoningMessage,
   SystemEventMessage,
   SystemStatusMessage,
   ToolGroupMessage,
@@ -223,10 +221,6 @@ function renderMessage(
       { kind: "tool_progress" }
     >;
     return <div className="chat-tool-progress-inline">{progressMsg.content}</div>;
-  }
-  if (k === "reasoning") {
-    const rMsg = msg as ReasoningMessage;
-    return <ThinkingBlock text={rMsg.text} duration={rMsg.duration ?? 0} />;
   }
   const bubble = msg as Extract<ChatMessage, { role: "user" | "agent" }>;
   return (

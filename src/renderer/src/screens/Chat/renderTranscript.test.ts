@@ -273,7 +273,7 @@ describe("buildRenderableTranscript", () => {
     expect((agentTexts[0] as any).content).toBe("First part\nSecond part");
   });
 
-  it("passes reasoning messages through to MessageList for rendering", () => {
+  it("filters reasoning messages out of transcript — only shown during live streaming", () => {
     const messages: ChatMessage[] = [
       { id: "u1", role: "user", content: "Hello" },
       { id: "r1", kind: "reasoning", role: "agent", text: "Thinking..." },
@@ -286,9 +286,8 @@ describe("buildRenderableTranscript", () => {
       toolProgress: null,
     });
 
-    expect(result).toHaveLength(3);
+    expect(result).toHaveLength(2);
     expect(result[0].id).toBe("u1");
-    expect(result[1]).toMatchObject({ kind: "reasoning", text: "Thinking..." });
-    expect(result[2].id).toBe("a1");
+    expect(result[1].id).toBe("a1");
   });
 });
