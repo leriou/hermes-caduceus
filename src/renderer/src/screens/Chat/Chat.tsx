@@ -15,7 +15,8 @@ import type { ReasoningMessage } from "./types";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 
-import { MessageList } from "./MessageList";
+import { MessageList, type MessageListHandle } from "./MessageList";
+import { MessageTimelineNavigator } from "./MessageTimelineNavigator";
 import { ApprovalHistoryPanel } from "./ApprovalHistoryPanel";
 import { ApprovalModal } from "./ApprovalModal";
 import { InteractionCenter } from "./InteractionCenter";
@@ -40,7 +41,6 @@ import { buildChatTranscript } from "./transcriptUtils";
 import { createSystemEvent, systemEventFromError } from "./systemEvents";
 import { createTauriChatGatewayClient } from "./tauriChatGatewayClient";
 import type { ChatMessage } from "./types";
-import type { VirtuosoHandle } from "react-virtuoso";
 
 export type { ChatMessage } from "./types";
 
@@ -181,10 +181,10 @@ function Chat({
     }
   }, [isLoading, streamingReasoning]);
 
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const messageListRef = useRef<MessageListHandle>(null);
 
   const scrollToBottomVirtuoso = useCallback(
-    () => virtuosoRef.current?.scrollToIndex({ index: "LAST", behavior: "smooth" }),
+    () => messageListRef.current?.scrollToBottom(),
     [],
   );
 
@@ -199,7 +199,7 @@ function Chat({
     setMessages,
     messagesRef,
     onPrepended: useCallback(
-      (count: number) => virtuosoRef.current?.adjustForPrependedItems({ prepended: count }),
+      (count: number) => messageListRef.current?.adjustForPrependedItems({ prepended: count }),
       [],
     ),
   });
@@ -621,6 +621,7 @@ function Chat({
           <>
             {goalSummary && <GoalBar summary={goalSummary} />}
             <MessageList
+              ref={messageListRef}
               messages={messages}
               isLoading={isLoading}
               toolProgress={toolProgress}
@@ -630,6 +631,10 @@ function Chat({
               todos={todos}
               onLoadEarlier={handleLoadEarlierMessages}
               atBottomStateChange={handleAtBottomChange}
+            />
+            <MessageTimelineNavigator
+              messages={messages}
+              onScrollToMessage={(id) => messageListRef.current?.scrollToMessage(id)}
             />
           </>
         )}

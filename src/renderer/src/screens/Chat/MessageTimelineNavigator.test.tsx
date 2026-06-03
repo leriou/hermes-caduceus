@@ -1,102 +1,88 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { MessageTimelineNavigator } from "./MessageTimelineNavigator";
 import type { ChatMessage } from "./types";
 
 describe("MessageTimelineNavigator", () => {
-  beforeEach(() => {
-    (globalThis as any).ResizeObserver = class ResizeObserver {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    };
-  });
-
-  it("filters user messages and renders markers when scroll container is long enough", () => {
+  it("filters user messages and renders markers", () => {
     const messages: ChatMessage[] = [
       { id: "u1", role: "user", content: "hello first message", timestamp: 1716739200000 },
       { id: "a1", role: "agent", content: "agent reply" },
       { id: "u2", role: "user", content: "user reply 2", timestamp: 1716739201000 },
     ];
 
-    // Create a mocked scroll container with coordinates
-    const container = document.createElement("div");
-    Object.defineProperty(container, "scrollHeight", { value: 600, writable: true });
-    Object.defineProperty(container, "clientHeight", { value: 200, writable: true });
-    container.scrollTo = vi.fn();
-
-    // Append fake elements to match selector
-    const node1 = document.createElement("div");
-    node1.className = "chat-message-user";
-    Object.defineProperty(node1, "offsetTop", { value: 50 });
-    Object.defineProperty(node1, "offsetHeight", { value: 40 });
-
-    const node2 = document.createElement("div");
-    node2.className = "chat-message-user";
-    Object.defineProperty(node2, "offsetTop", { value: 300 });
-    Object.defineProperty(node2, "offsetHeight", { value: 40 });
-
-    container.appendChild(node1);
-    container.appendChild(node2);
-
-    const containerRef = { current: container };
-
+    const onScrollToMessage = vi.fn();
     const { container: rendered } = render(
-      <MessageTimelineNavigator messages={messages} containerRef={containerRef} />
+      <MessageTimelineNavigator messages={messages} onScrollToMessage={onScrollToMessage} />
     );
 
-    // Expect timeline navigator track to exist
     const navigator = rendered.querySelector(".chat-timeline-navigator");
     expect(navigator).toBeTruthy();
 
-    // Verify markers
     const markers = screen.getAllByRole("button");
-    expect(markers).toHaveLength(2); // Two user messages should be filtered
+    expect(markers).toHaveLength(2);
 
-    // Verify tooltip titles
     expect(markers[0].getAttribute("title")).toBe("hello first message");
     expect(markers[1].getAttribute("title")).toBe("user reply 2");
+  });
+
+  it("calls onScrollToMessage when marker is clicked", () => {
+    const messages: ChatMessage[] = [
+      { id: "u1", role: "user", content: "hello first message", timestamp: 1716739200000 },
+      { id: "a1", role: "agent", content: "agent reply" },
+      { id: "u2", role: "user", content: "user reply 2", timestamp: 1716739201000 },
+    ];
+
+    const onScrollToMessage = vi.fn();
+    render(
+      <MessageTimelineNavigator messages={messages} onScrollToMessage={onScrollToMessage} />
+    );
+
+    const markers = screen.getAllByRole("button");
+    fireEvent.click(markers[0]);
+    expect(onScrollToMessage).toHaveBeenCalledWith("u1");
+
+    fireEvent.click(markers[1]);
+    expect(onScrollToMessage).toHaveBeenCalledWith("u2");
   });
 
   it("includes backward-compatible user bubble messages with kind user", () => {
     const messages: ChatMessage[] = [
       { id: "u1", role: "user", kind: "user", content: "legacy user bubble", timestamp: 1716739200000 },
       { id: "a1", role: "agent", kind: "assistant", content: "agent reply" },
+      { id: "u2", role: "user", kind: "user", content: "another user message", timestamp: 1716739201000 },
     ];
 
-    const container = document.createElement("div");
-    Object.defineProperty(container, "scrollHeight", { value: 600, writable: true });
-    Object.defineProperty(container, "clientHeight", { value: 200, writable: true });
-
-    const node1 = document.createElement("div");
-    node1.className = "chat-message-user";
-    Object.defineProperty(node1, "offsetTop", { value: 50 });
-    Object.defineProperty(node1, "offsetHeight", { value: 40 });
-    container.appendChild(node1);
-
-    const containerRef = { current: container };
-
-    render(<MessageTimelineNavigator messages={messages} containerRef={containerRef} />);
-
-    expect(screen.getByRole("button", { name: /go to user message/i })).toHaveAttribute(
-      "title",
-      "legacy user bubble",
+    const { container: rendered } = render(
+      <MessageTimelineNavigator messages={messages} />
     );
+
+    const buttons = screen.getAllByRole("button", { name: /go to user message/i });
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0]).toHaveAttribute("title", "legacy user bubble");
+    expect(buttons[1]).toHaveAttribute("title", "another user message");
   });
 
-  it("does not render when the scroll container is short", () => {
+  it("does not render when fewer than 2 user messages", () => {
     const messages: ChatMessage[] = [
       { id: "u1", role: "user", content: "hello first message", timestamp: 1716739200000 },
     ];
 
-    const container = document.createElement("div");
-    Object.defineProperty(container, "scrollHeight", { value: 220, writable: true });
-    Object.defineProperty(container, "clientHeight", { value: 200, writable: true });
+    const { container: rendered } = render(
+      <MessageTimelineNavigator messages={messages} />
+    );
 
-    const containerRef = { current: container };
+    const navigator = rendered.querySelector(".chat-timeline-navigator");
+    expect(navigator).toBeNull();
+  });
+
+  it("does not render with no user messages", () => {
+    const messages: ChatMessage[] = [
+      { id: "a1", role: "agent", content: "agent reply" },
+    ];
 
     const { container: rendered } = render(
-      <MessageTimelineNavigator messages={messages} containerRef={containerRef} />
+      <MessageTimelineNavigator messages={messages} />
     );
 
     const navigator = rendered.querySelector(".chat-timeline-navigator");

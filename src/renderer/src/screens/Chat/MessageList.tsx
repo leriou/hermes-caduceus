@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, forwardRef } from "react";
+import { memo, useMemo, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { HermesAvatar, MessageRow } from "./MessageRow";
 import { ToolResultRow } from "./HistoryRow";
@@ -25,6 +25,8 @@ import type { RenderTranscriptItem } from "./renderTranscript";
 
 export interface MessageListHandle {
   scrollToBottom: () => void;
+  scrollToMessage: (messageId: string) => void;
+  adjustForPrependedItems: (opts: { prepended: number }) => void;
 }
 
 interface MessageListProps {
@@ -236,17 +238,18 @@ function renderMessage(
   );
 }
 
-export const MessageList = memo(function MessageList({
-  messages,
-  isLoading,
-  toolProgress,
-  streamingText = "",
-  streamingReasoning = "",
-  thinkingDuration = 0,
-  todos = [],
-  onLoadEarlier,
-  atBottomStateChange,
-}: MessageListProps): React.JSX.Element {
+export const MessageList = memo(
+  forwardRef<MessageListHandle, MessageListProps>(function MessageList({
+    messages,
+    isLoading,
+    toolProgress,
+    streamingText = "",
+    streamingReasoning = "",
+    thinkingDuration = 0,
+    todos = [],
+    onLoadEarlier,
+    atBottomStateChange,
+  }, ref) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   const visibleMessages = useMemo(
@@ -261,6 +264,17 @@ export const MessageList = memo(function MessageList({
       }),
     [messages, isLoading, toolProgress],
   );
+
+  useImperativeHandle(ref, () => ({
+    scrollToBottom: () => virtuosoRef.current?.scrollToIndex({ index: "LAST", behavior: "smooth" }),
+    scrollToMessage: (messageId: string) => {
+      const idx = visibleMessages.findIndex(m => m.id === messageId);
+      if (idx >= 0) {
+        virtuosoRef.current?.scrollToIndex({ index: idx, behavior: "smooth", align: "start" });
+      }
+    },
+    adjustForPrependedItems: (opts) => virtuosoRef.current?.adjustForPrependedItems(opts),
+  }), [visibleMessages]);
 
   const StreamingFooter = useMemo(() => {
     if (!isLoading) return null;
@@ -287,36 +301,43 @@ export const MessageList = memo(function MessageList({
     );
   }, [isLoading, streamingText, streamingReasoning, thinkingDuration, toolProgress, messages, todos]);
 
+  const streamingFooterRef = useRef<React.JSX.Element | null>(null);
+  streamingFooterRef.current = StreamingFooter;
+
+  const virtuosoComponents = useMemo(() => ({
+    Footer: () => <>{streamingFooterRef.current}</>,
+    List: forwardRef(function VirtuosoList(
+      { style, children, ...props }: any,
+      ref: any,
+    ) {
+      return (
+        <div
+          ref={ref}
+          {...props}
+          style={style}
+          className="chat-messages-inner"
+        >
+          {children}
+        </div>
+      );
+    }),
+  }), []);
+
   return (
     <Virtuoso<RenderTranscriptItem>
       ref={virtuosoRef}
       data={visibleMessages}
       followOutput="smooth"
+      increaseViewportBy={{ top: 200, bottom: 200 }}
       startReached={onLoadEarlier}
       atBottomStateChange={atBottomStateChange}
       computeItemKey={(_index, msg) => msg.id}
       itemContent={(index, msg) =>
         renderMessage(msg, index, visibleMessages.length, isLoading)
       }
-      components={{
-        Footer: () => <>{StreamingFooter}</>,
-        List: forwardRef(function VirtuosoList(
-          { style, children, ...props }: any,
-          ref: any,
-        ) {
-          return (
-            <div
-              ref={ref}
-              {...props}
-              style={style}
-              className="chat-messages-inner"
-            >
-              {children}
-            </div>
-          );
-        }),
-      }}
+      components={virtuosoComponents}
     />
   );
-});
+  })
+);
 

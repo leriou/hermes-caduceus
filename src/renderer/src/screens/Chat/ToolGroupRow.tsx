@@ -595,8 +595,14 @@ function ToolTable({
                 args = {};
               }
             } catch {
-              // Non-JSON args text — try to show context if available
-              args = call.context ? { context: call.context } : {};
+              // Non-JSON args text — map to first column key or fall back to context
+              const raw = (call.args || "").trim();
+              if (raw) {
+                const key = columns[0]?.key;
+                args = key ? { [key]: raw } : {};
+              } else {
+                args = call.context ? { context: call.context } : {};
+              }
             }
             const pending = call.result === undefined;
             return (
