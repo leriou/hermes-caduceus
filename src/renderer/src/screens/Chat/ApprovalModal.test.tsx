@@ -5,7 +5,7 @@ import { DEFAULT_APPROVAL_POLICY } from "./approvalPolicy";
 
 const request = {
   command:
-    "python scripts/migrate.py --force --project /Users/xmli/code/hermes-desktop",
+    "python scripts/migrate.py --force --project /home/user/projects/hermes-desktop",
   description: "Run a local migration",
   patternKey: "python",
   patternKeys: ["python", "migration"],

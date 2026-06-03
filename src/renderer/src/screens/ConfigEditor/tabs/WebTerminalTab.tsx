@@ -38,7 +38,7 @@ function WebTerminalTab({
             configKey="terminal.cwd"
             value={config["terminal.cwd"] || ""}
             type="text"
-            placeholder="/Users/xmli/.hermes/datas"
+            placeholder="~/.hermes/datas"
             onChange={onConfigChange}
             saving={saving}
             error={errors["terminal.cwd"]}
