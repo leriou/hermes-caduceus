@@ -161,26 +161,6 @@ function Chat({
     return null;
   }, [messages]);
 
-  // --- Thinking duration timer ---
-  const thinkingStartRef = useRef<number | null>(null);
-  const [thinkingDuration, setThinkingDuration] = useState<number | undefined>();
-
-  useEffect(() => {
-    if (isLoading && streamingReasoning) {
-      if (!thinkingStartRef.current) thinkingStartRef.current = Date.now();
-      const interval = setInterval(() => {
-        if (thinkingStartRef.current) {
-          setThinkingDuration(Date.now() - thinkingStartRef.current);
-        }
-      }, 1000);
-      return () => clearInterval(interval);
-    } else {
-      thinkingStartRef.current = null;
-      setThinkingDuration(undefined);
-      return undefined;
-    }
-  }, [isLoading, streamingReasoning]);
-
   const messageListRef = useRef<MessageListHandle>(null);
 
   const scrollToBottomVirtuoso = useCallback(
@@ -627,7 +607,6 @@ function Chat({
               toolProgress={toolProgress}
               streamingText={streamingText}
               streamingReasoning={streamingReasoning}
-              thinkingDuration={thinkingDuration}
               todos={todos}
               onLoadEarlier={handleLoadEarlierMessages}
               atBottomStateChange={handleAtBottomChange}

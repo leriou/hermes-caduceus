@@ -33,7 +33,6 @@ interface MessageListProps {
   toolProgress: string | null;
   streamingText?: string;
   streamingReasoning?: string;
-  thinkingDuration?: number;
   todos?: TodoItem[];
   onLoadEarlier?: () => void;
   onPrepended?: (count: number) => void;
@@ -239,7 +238,6 @@ export const MessageList = memo(
     toolProgress,
     streamingText = "",
     streamingReasoning = "",
-    thinkingDuration = 0,
     todos = [],
     onLoadEarlier,
     atBottomStateChange,
@@ -275,7 +273,7 @@ export const MessageList = memo(
     return (
       <div className="chat-messages-inner">
         {!streamingText && !toolProgress && !!streamingReasoning && (
-          <ThinkingIndicator text={streamingReasoning} duration={thinkingDuration} />
+          <ThinkingIndicator text={streamingReasoning} />
         )}
         {!streamingText && toolProgress && (
           <ToolProgressIndicator toolProgress={toolProgress} messages={messages} />
@@ -293,7 +291,7 @@ export const MessageList = memo(
         )}
       </div>
     );
-  }, [isLoading, streamingText, streamingReasoning, thinkingDuration, toolProgress, messages, todos]);
+  }, [isLoading, streamingText, streamingReasoning, toolProgress, messages, todos]);
 
   const streamingFooterRef = useRef<React.JSX.Element | null>(null);
   streamingFooterRef.current = StreamingFooter;
