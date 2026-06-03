@@ -20,13 +20,18 @@ concurrency:
 
 jobs:
   build:
-    name: Build macOS
-    runs-on: macos-latest
+    name: Build macOS (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest]
-        arch: [x64, arm64]
+        include:
+          - arch: x64
+            target: x86_64-apple-darwin
+            runner: macos-13
+          - arch: arm64
+            target: aarch64-apple-darwin
+            runner: macos-latest
 
     steps:
       - name: Check out repository
@@ -41,7 +46,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.arch == 'x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
+          targets: ${{ matrix.target }}
 
       - name: Install dependencies
         run: npm install
@@ -50,13 +55,6 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Signing credentials (optional for unnotarized builds)
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_CERTIFICATE: ${{ secrets.CSC_LINK }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tauriScript: npx tauri
           tagName: ${{ github.ref_name }}
@@ -64,4 +62,4 @@ jobs:
           releaseBody: "Native macOS build of Hermes Caduceus. See assets below for .dmg."
           releaseDraft: true
           prerelease: false
-          args: --target ${{ matrix.arch == 'x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
+          args: --target ${{ matrix.target }}
