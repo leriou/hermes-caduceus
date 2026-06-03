@@ -329,7 +329,7 @@ export function useChatInbox({
     // may not reflect the new streamingReasoning value yet.
     const pendingReasoningFrame = reasoningFlushRef.current.get(tabId);
     if (pendingReasoningFrame != null) {
-      clearTimeout(pendingReasoningFrame as unknown as number);
+      cancelAnimationFrame(pendingReasoningFrame as unknown as number);
       reasoningFlushRef.current.delete(tabId);
     }
     const pendingReasoning = pendingReasoningRef.current.get(tabId) ?? "";
@@ -401,7 +401,7 @@ export function useChatInbox({
     pendingReasoningRef.current.delete(tabId);
     const rf = reasoningFlushRef.current.get(tabId);
     if (rf != null) {
-      clearTimeout(rf as unknown as number);
+      cancelAnimationFrame(rf as unknown as number);
       reasoningFlushRef.current.delete(tabId);
     }
     turnCompletedRef.current.set(tabId, true);
@@ -665,9 +665,6 @@ export function useChatInbox({
       flushFramesRef.current.set(tabId, id as unknown as Symbol);
     }
 
-    const REASONING_FLUSH_CHARS = 100;
-    const REASONING_FLUSH_MS = 1500;
-
     function flushReasoning(tabId: string): void {
       reasoningFlushRef.current.delete(tabId);
       const batch = pendingReasoningRef.current.get(tabId) ?? "";
@@ -680,17 +677,12 @@ export function useChatInbox({
     }
 
     function scheduleReasoningFlush(tabId: string): void {
-      const pending = pendingReasoningRef.current.get(tabId) ?? "";
-      if (pending.length >= REASONING_FLUSH_CHARS) {
-        flushReasoning(tabId);
-        return;
-      }
       if (reasoningFlushRef.current.has(tabId)) return;
-      const id = setTimeout(() => {
+      const id = requestAnimationFrame(() => {
         if (reasoningFlushRef.current.get(tabId) === id) {
           flushReasoning(tabId);
         }
-      }, REASONING_FLUSH_MS) as unknown as Symbol;
+      }) as unknown as Symbol;
       reasoningFlushRef.current.set(tabId, id);
     }
 
@@ -788,7 +780,7 @@ export function useChatInbox({
           // Flush pending reasoning directly from ref — same race fix as commitStreaming.
           const rFrame = reasoningFlushRef.current.get(tabId);
           if (rFrame != null) {
-            clearTimeout(rFrame as unknown as number);
+            cancelAnimationFrame(rFrame as unknown as number);
             reasoningFlushRef.current.delete(tabId);
           }
           const pReasoning = pendingReasoningRef.current.get(tabId) ?? "";
