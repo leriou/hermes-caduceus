@@ -1360,4 +1360,66 @@ describe("useChatInbox", () => {
     });
     expect(finalizerCall).toBeTruthy();
   });
+
+  it("ignores late reasoning.delta after message.complete", async () => {
+    const updateTab = vi.fn();
+    const updateTabMessages = vi.fn();
+
+    const sessions = new Map<string, SessionState>([
+      [
+        "tab-1",
+        {
+          ...sessionState(),
+          isLoading: false,
+        },
+      ],
+    ]);
+
+    renderHook(() =>
+      useChatInbox({
+        sessions,
+        activeTabId: "tab-1",
+        chatVisible: true,
+        findTabBySessionId: () => "tab-1",
+        updateTab,
+        updateTabMessages,
+      }),
+    );
+
+    // Simulate a completed turn
+    eventHandler?.({
+      type: "message.start",
+      sid: "sid-1",
+      payload: {},
+    });
+    eventHandler?.({
+      type: "message.delta",
+      sid: "sid-1",
+      payload: { text: "hello" },
+    });
+    eventHandler?.({
+      type: "message.complete",
+      sid: "sid-1",
+      payload: { text: "hello" },
+    });
+
+    await waitFor(() => {
+      expect(updateTab).toHaveBeenCalledWith("tab-1", expect.objectContaining({ isLoading: false }));
+    });
+
+    const callsBefore = updateTab.mock.calls.length;
+
+    // Late reasoning.delta arrives AFTER turn completed
+    eventHandler?.({
+      type: "reasoning.delta",
+      sid: "sid-1",
+      payload: { text: "late thinking" },
+    });
+
+    // Should NOT set isLoading back to true
+    const isLoadingCalls = updateTab.mock.calls
+      .slice(callsBefore)
+      .filter((c: any[]) => c[1]?.isLoading === true);
+    expect(isLoadingCalls).toHaveLength(0);
+  });
 });

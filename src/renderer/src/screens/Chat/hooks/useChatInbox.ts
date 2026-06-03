@@ -1159,6 +1159,7 @@ export function useChatInbox({
         // ── Reasoning / Thinking ──────────────────────────────────────
         case "thinking.delta":
         case "reasoning.delta": {
+          if (turnCompletedRef.current.get(tabId)) return;
           if (!thinkingStartRef.current.has(tabId)) {
             thinkingStartRef.current.set(tabId, Date.now());
           }
@@ -1318,6 +1319,7 @@ export function useChatInbox({
 
         // ── Reasoning content available (toggle hint) ─────────────────
         case "reasoning.available": {
+          if (turnCompletedRef.current.get(tabId)) return;
           const reasonText = textFromPayload(payload);
           if (reasonText) {
             updateTab(tabId, { streamingReasoning: reasonText });
