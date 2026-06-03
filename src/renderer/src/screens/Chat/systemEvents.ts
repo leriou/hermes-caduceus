@@ -83,8 +83,8 @@ export function notify(event: SystemEventKind, content: string, options?: { tone
   return createSystemEvent(event, EVENT_TITLES[event] ?? event, content, options);
 }
 
-export function notifyError(message: string, options?: { code?: string; details?: string }): SystemEventMessage[] {
-  const messages: SystemEventMessage[] = [
+export function notifyError(message: string, options?: { code?: string; details?: string }): (SystemEventMessage | SystemStatusMessage)[] {
+  const messages: (SystemEventMessage | SystemStatusMessage)[] = [
     createSystemEvent("agent_error", "Agent error", message, options),
   ];
   if (options?.details) {
@@ -104,7 +104,7 @@ export function systemEventFromError(error: unknown): SystemEventMessage {
   return createSystemEvent("gateway_error", "Gateway error", message);
 }
 
-export function notifyGatewayError(type: string, payload: Record<string, unknown>, sessionId?: string): SystemEventMessage {
+export function notifyGatewayError(type: string, payload: Record<string, unknown>, _sessionId?: string): SystemEventMessage {
   const message =
     (payload.message as string) || (payload.preview as string) || (payload.stderr_tail as string)
     || (type.includes("timeout") ? "Gateway failed to start" : "Gateway communication error");

@@ -21,7 +21,6 @@ interface JsonRpcNotification {
 }
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
-const HEARTBEAT_TIMEOUT_MS = 10_000;
 const MAX_MISSED_HEARTBEATS = 3;
 const BASE_RECONNECT_MS = 1_000;
 const MAX_RECONNECT_MS = 30_000;
@@ -37,7 +36,6 @@ export function createWsGatewayClientImpl(): WsGatewayClient {
   const listeners = new Set<(event: NormalizedTuiEvent) => void>();
   const connectionListeners = new Set<(state: WsConnectionState) => void>();
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  let wsUrl: string | null = null;
   let reconnectAttempt = 0;
 
   // Heartbeat state
@@ -118,9 +116,9 @@ export function createWsGatewayClientImpl(): WsGatewayClient {
 
     if ("id" in parsed && parsed.id != null) {
       const resp = parsed as JsonRpcResponse;
-      const entry = pending.get(resp.id);
+      const entry = pending.get(resp.id ?? 0);
       if (entry) {
-        pending.delete(resp.id);
+        pending.delete(resp.id ?? 0);
         if (resp.error) entry.reject(new Error(resp.error.message));
         else entry.resolve(resp.result);
       }
@@ -150,8 +148,6 @@ export function createWsGatewayClientImpl(): WsGatewayClient {
       emitConnectionState("unavailable");
       return false;
     }
-    wsUrl = url;
-
     return new Promise<boolean>((resolve) => {
       try { ws = new WebSocket(url); } catch { resolve(false); return; }
 

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   readModelStore,
-  writeModelStore,
   registerProvider,
   unregisterProvider,
   saveModel as saveModelIpc,
@@ -67,30 +66,6 @@ export function useModelStore(profile: string = "default"): UseModelStoreResult 
       }
     }
   }, [profile]);
-
-  // Sync store to disk
-  const syncToDisk = useCallback(
-    async (updatedStore: ModelConfigStore) => {
-      try {
-        const result = await writeModelStore(updatedStore, profile);
-        if (mountedRef.current) {
-          setStore(result);
-          storeRef.current = result;
-        }
-        return result;
-      } catch (err: any) {
-        if (mountedRef.current) {
-          setError(err?.message || String(err));
-        }
-        // Revert to last known good state
-        if (mountedRef.current) {
-          setStore(storeRef.current);
-        }
-        throw err;
-      }
-    },
-    [profile],
-  );
 
   // Load on mount
   useEffect(() => {

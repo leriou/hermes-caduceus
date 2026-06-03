@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
+import { memo, useMemo, useRef, forwardRef, useImperativeHandle } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { HermesAvatar, MessageRow } from "./MessageRow";
 import { ToolResultRow } from "./HistoryRow";
@@ -273,7 +273,7 @@ export const MessageList = memo(
         virtuosoRef.current?.scrollToIndex({ index: idx, behavior: "smooth", align: "start" });
       }
     },
-    adjustForPrependedItems: (opts) => virtuosoRef.current?.adjustForPrependedItems(opts),
+    adjustForPrependedItems: (opts) => (virtuosoRef.current as any)?.adjustForPrependedItems(opts),
   }), [visibleMessages]);
 
   const StreamingFooter = useMemo(() => {

@@ -183,7 +183,7 @@ export default function PluginMetricsPanel({ profile }: { profile?: string }) {
     setLoading(true); setError(null);
     try {
       const data = await getPluginMetrics(undefined, profile);
-      setMetrics(Array.isArray(data) ? data : []);
+      setMetrics(Array.isArray(data) ? (data as unknown as PluginMetricData[]) : []);
     } catch (err) { setError((err as Error).message); }
     finally { setLoading(false); }
   }, [profile]);

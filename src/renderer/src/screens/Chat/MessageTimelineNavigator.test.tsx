@@ -53,7 +53,7 @@ describe("MessageTimelineNavigator", () => {
       { id: "u2", role: "user", kind: "user", content: "another user message", timestamp: 1716739201000 },
     ];
 
-    const { container: rendered } = render(
+    render(
       <MessageTimelineNavigator messages={messages} />
     );
 

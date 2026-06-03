@@ -676,7 +676,6 @@ export const ToolGroupRow = memo(function ToolGroupRow({
   ).length;
   const failed = msg.calls.filter((c) => c.success === false).length;
   const pending = msg.calls.filter((c) => c.result === undefined).length;
-  const allDone = pending === 0;
 
   const columns = useMemo(() => {
     const custom = getColumnsForTool(msg.toolName);

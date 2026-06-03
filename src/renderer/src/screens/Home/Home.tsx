@@ -7,7 +7,7 @@ interface HomeProps {
   profile?: string;
 }
 
-function Home({ onNavigate, onNewChat, profile }: HomeProps): React.JSX.Element {
+function Home({ onNavigate, onNewChat, profile: _profile }: HomeProps): React.JSX.Element {
   const { t } = useI18n();
 
   return (

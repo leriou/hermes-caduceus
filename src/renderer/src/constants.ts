@@ -242,6 +242,7 @@ export const LOCAL_PRESETS: LocalPreset[] = [
     id: "lmstudio",
     name: "constants.lmstudio",
     baseUrl: DEFAULT_LOCAL_BASE_URL,
+    group: "local",
   },
   {
     id: "ollama",

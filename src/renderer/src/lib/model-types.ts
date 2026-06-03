@@ -177,7 +177,18 @@ export interface ModelConfigStore {
   models: Record<string, ClientModel>;
 }
 
-export function inferEnvVar(providerKey: string, baseUrl: string): string {
+export interface RoutingConfig {
+  defaultModel?: string;
+  defaultProvider?: string;
+  defaultBaseUrl?: string;
+  provider?: string;
+  baseUrl?: string;
+  maxTokens?: number;
+  fallbacks?: Array<{ model: string; provider: string }>;
+  fallbackProviders?: Array<{ model: string; provider: string }>;
+}
+
+export function inferEnvVar(providerKey: string, _baseUrl: string): string {
   const known: Record<string, string> = {
     openrouter: "OPENROUTER_API_KEY",
     openai: "OPENAI_API_KEY",

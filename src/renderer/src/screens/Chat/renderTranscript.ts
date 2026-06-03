@@ -152,8 +152,8 @@ export function buildRenderableTranscript({
   isLoading,
   toolProgress,
   streamingText = "",
-  streamingReasoning = "",
-  todos = [],
+  streamingReasoning: _streamingReasoning = "",
+  todos: _todos = [],
 }: BuildRenderableTranscriptArgs): RenderTranscriptItem[] {
   // Drop HCE compaction messages — they are system-internal, not for display.
   // Strip routing hints from user messages — they are model-internal, not for display.

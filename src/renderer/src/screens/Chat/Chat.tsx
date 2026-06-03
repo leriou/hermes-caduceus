@@ -11,7 +11,6 @@ import {
 } from "@renderer/lib/hermes-tauri";
 import { getStoreItem, setStoreItem } from "@renderer/utils/store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReasoningMessage } from "./types";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatHeader } from "./ChatHeader";
 
@@ -178,6 +177,7 @@ function Chat({
     } else {
       thinkingStartRef.current = null;
       setThinkingDuration(undefined);
+      return undefined;
     }
   }, [isLoading, streamingReasoning]);
 

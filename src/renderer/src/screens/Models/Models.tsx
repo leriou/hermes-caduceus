@@ -1,13 +1,11 @@
 import {
   listTemplates,
-  addModel,
   checkNeedsMigration,
   runModelMigration,
 } from "@renderer/lib/hermes-tauri";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, Search, ArrowRight } from "../../assets/icons";
+import { Plus, Search } from "../../assets/icons";
 import { useI18n } from "../../components/useI18n";
-import BrandLogo from "../../components/common/BrandLogo";
 import { cache } from "../../utils/prefetchCache";
 import { useModelStore } from "../../hooks/useModelStore";
 import ModelsList from "./ModelsList";
@@ -31,16 +29,16 @@ interface TemplateModel {
 function Models({
   visible,
   profile = "default",
-  onNavigate,
+  onNavigate: _onNavigate,
 }: {
   visible?: boolean;
   profile?: string;
   onNavigate?: (view: string) => void;
 } = {}): React.JSX.Element {
   const { t } = useI18n();
-  const [templates, setTemplates] = useState<TemplateModel[]>([]);
+  const [_templates, setTemplates] = useState<TemplateModel[]>([]);
   const [search, setSearch] = useState("");
-  const [templatesLoading, setTemplatesLoading] = useState(true);
+  const [_templatesLoading, setTemplatesLoading] = useState(true);
 
   const {
     store,
@@ -157,16 +155,6 @@ function Models({
     const model = store.models[modelId];
     if (model) await removeStoreModel(modelId, model.providerId);
   }
-
-  async function handleQuickAdd(tmpl: TemplateModel): Promise<void> {
-    await addModel(tmpl.name, tmpl.provider, tmpl.model, tmpl.baseUrl, undefined, profile);
-    cache.invalidate("models:list");
-  }
-
-  const existingModelKeys = useMemo(
-    () => new Set(models.map((m) => `${m.providerId}::${m.modelId}`)),
-    [models],
-  );
 
   const filteredModels = useMemo(() => {
     if (!search) return models;

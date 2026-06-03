@@ -30,7 +30,7 @@ import { useSessionManager } from "../Chat/hooks/useSessionManager";
 import { useChatInbox } from "../Chat/hooks/useChatInbox";
 import { baseSessionTitle } from "../Chat/sessionDisplay";
 import { createWsGatewayClientImpl } from "@renderer/lib/wsGatewayClientImpl";
-import type { WsConnectionState, WsGatewayClient } from "@renderer/lib/wsGatewayClient";
+import type { WsConnectionState } from "@renderer/lib/wsGatewayClient";
 import { rewriteTranscript } from "../Chat/renderTranscript";
 import { getStoreItem } from "@renderer/utils/store";
 import RemoteNotice from "../../components/RemoteNotice";

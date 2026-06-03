@@ -13,8 +13,9 @@ describe("useChatInbox", () => {
     | ((params: { type: string; payload: any; sid?: string }) => void)
     | null;
 
-  function sessionState(): SessionState {
+  function sessionState(overrides?: Partial<SessionState>): SessionState {
     return {
+      ...{
       messages: [],
       isLoading: true,
       usage: null,
@@ -35,6 +36,8 @@ describe("useChatInbox", () => {
       title: "",
       model: "",
       updatedAt: Date.now(),
+      },
+      ...overrides,
     };
   }
 

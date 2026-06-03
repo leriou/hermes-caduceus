@@ -4,7 +4,7 @@ import type { Attachment, ChatMessage, ClarifyRequest } from "../types";
 import { describeInputIntent } from "../inputIntent";
 import { createTauriChatGatewayClient } from "../tauriChatGatewayClient";
 import type { WsGatewayClient } from "@renderer/lib/wsGatewayClient";
-import { notify, notifyError, createStatusMessage } from "../systemEvents";
+import { notifyError, createStatusMessage } from "../systemEvents";
 
 interface LocalCommands {
   isLocal: (text: string) => boolean;

@@ -69,7 +69,7 @@ export const ChatHeader = memo(function ChatHeader({
   sessionTitle,
   sessionModel,
   usage,
-  hasMessages,
+  hasMessages: _hasMessages,
   contextFolder,
   showContextFolder,
   onPickFolder,

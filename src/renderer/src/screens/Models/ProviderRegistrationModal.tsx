@@ -17,7 +17,7 @@ interface ProviderRegistrationModalProps {
 }
 
 export default function ProviderRegistrationModal({
-  profile = "default",
+  profile: _profile = "default",
   onClose,
   onSave,
   initialProviderKey,
