@@ -41,7 +41,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.arch === 'x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
+          targets: ${{ matrix.arch == 'x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
 
       - name: Install dependencies
         run: npm install
@@ -63,4 +63,4 @@ jobs:
           releaseBody: "Native macOS build of Hermes Caduceus. See assets below for .dmg."
           releaseDraft: true
           prerelease: false
-          args: --target ${{ matrix.arch === 'x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}
+          args: --target ${{ matrix.arch == 'x64' && 'x86_64-apple-darwin' || 'aarch64-apple-darwin' }}

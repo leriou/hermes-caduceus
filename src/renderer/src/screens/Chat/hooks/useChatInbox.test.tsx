@@ -186,8 +186,8 @@ describe("useChatInbox", () => {
       expect(firstUpdater([])[0]).toMatchObject({
         kind: "system_event",
         role: "system",
-        event: "provider_error",
-        title: "Provider error 429",
+        event: "agent_error",
+        title: "Agent error",
       });
       expect(secondUpdater([])[0]).toMatchObject({
         kind: "system_event",
