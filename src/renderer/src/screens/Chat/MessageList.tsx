@@ -280,7 +280,7 @@ export const MessageList = memo(
     if (!isLoading) return null;
     return (
       <div className="chat-messages-inner">
-        {!streamingText && !toolProgress && (
+        {!streamingText && !toolProgress && !!streamingReasoning && (
           <ThinkingIndicator text={streamingReasoning} duration={thinkingDuration} />
         )}
         {!streamingText && toolProgress && (
