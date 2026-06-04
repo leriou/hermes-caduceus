@@ -3,43 +3,42 @@ import { describe, expect, it } from "vitest";
 import { StreamingMarkdown } from "./StreamingMarkdown";
 
 describe("StreamingMarkdown", () => {
-  it("renders a complete table block before the whole message finishes", () => {
+  it("renders text content as plain text during streaming", () => {
     const { container } = render(
       <StreamingMarkdown>
-        {
-          "before\n\n| Name | Status |\n| --- | --- |\n| build | pass |\n\ncontinuing..."
-        }
+        {"Hello **world** and `code` here"}
       </StreamingMarkdown>,
     );
 
-    const table = container.querySelector("table.sm-table");
-    expect(table).not.toBeNull();
-    expect(table?.querySelectorAll("tbody tr")).toHaveLength(1);
-    expect(table?.textContent).toContain("build");
-    expect(container.textContent).toContain("continuing...");
+    expect(container.textContent).toContain("Hello **world** and `code` here");
+    // No markdown formatting applied during streaming
+    expect(container.querySelector("code")).toBeNull();
+    expect(container.querySelector("strong")).toBeNull();
   });
 
-  it("does not render an unfinished trailing table as a table", () => {
-    const { container } = render(
-      <StreamingMarkdown>
-        {"| Name | Status |\n| --- | --- |\n| build |"}
-      </StreamingMarkdown>,
-    );
-
-    expect(container.querySelector("table.sm-table")).toBeNull();
-    expect(container.textContent).toContain("| build |");
+  it("renders empty state correctly", () => {
+    const { container } = render(<StreamingMarkdown>{""}</StreamingMarkdown>);
+    expect(container.querySelector(".sm-streaming")).not.toBeNull();
   });
 
-  it("does not render a trailing table at EOF without a blank line", () => {
+  it("renders table markdown as plain text during streaming", () => {
     const { container } = render(
       <StreamingMarkdown>
         {"| Name | Status |\n| --- | --- |\n| build | pass |"}
       </StreamingMarkdown>,
     );
 
-    // Without a trailing blank line the entire content is the streaming tail,
-    // so no table element is produced.
-    expect(container.querySelector("table.sm-table")).toBeNull();
-    expect(container.textContent).toContain("build");
+    expect(container.querySelector("table")).toBeNull();
+    expect(container.textContent).toContain("| build |");
+  });
+
+  it("adds pre-wrap class for whitespace preservation", () => {
+    const { container } = render(
+      <StreamingMarkdown>{"line1\n\nline2\n\nline3"}</StreamingMarkdown>,
+    );
+
+    const el = container.querySelector(".sm-streaming-plain");
+    expect(el).not.toBeNull();
+    expect(container.textContent).toContain("line1\n\nline2");
   });
 });

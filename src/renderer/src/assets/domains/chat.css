@@ -1118,6 +1118,10 @@
 .sm-streaming {
   word-break: break-word;
 }
+.sm-streaming-plain {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
 .sm-table-wrap {
   max-width: 100%;
   overflow-x: auto;
