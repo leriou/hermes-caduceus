@@ -743,6 +743,7 @@ export function useChatInbox({
         }
 
         case "message.delta": {
+          if (turnCompletedRef.current.get(tabId)) break;
           const text = textFromPayload(payload);
           if (text) {
             updateTab(tabId, { isLoading: true, toolProgress: null });
@@ -894,6 +895,7 @@ export function useChatInbox({
         }
 
         case "tool.start":
+          if (turnCompletedRef.current.get(tabId)) break;
           clearStuckTimer(tabId);
           clearDeltaIdle(tabId);
           commitStreaming(tabId, runtimeSid);
@@ -1151,7 +1153,7 @@ export function useChatInbox({
         // ── Reasoning / Thinking ──────────────────────────────────────
         case "thinking.delta":
         case "reasoning.delta": {
-          if (turnCompletedRef.current.get(tabId)) return;
+          const turnDone = turnCompletedRef.current.get(tabId);
           if (!thinkingStartRef.current.has(tabId)) {
             thinkingStartRef.current.set(tabId, Date.now());
           }
@@ -1163,8 +1165,10 @@ export function useChatInbox({
               tabId,
               `${pendingReasoningRef.current.get(tabId) ?? ""}${text}`,
             );
-            // Ensure isLoading is true even if message.start was missed
-            if (!state?.isLoading) {
+            // Re-enable isLoading only if the turn hasn't completed yet.
+            // This prevents late deltas from re-showing ThinkingIndicator
+            // while still recovering if message.start was missed.
+            if (!state?.isLoading && !turnDone) {
               updateTab(tabId, { isLoading: true, toolProgress: null });
             }
             // Flush immediately on first chunk so the ThinkingIndicator
@@ -1311,13 +1315,14 @@ export function useChatInbox({
 
         // ── Reasoning content available (toggle hint) ─────────────────
         case "reasoning.available": {
-          if (turnCompletedRef.current.get(tabId)) return;
-          const reasonText = textFromPayload(payload);
-          if (reasonText) {
-            updateTab(tabId, { streamingReasoning: reasonText });
+          if (!turnCompletedRef.current.get(tabId)) {
+            const reasonText = textFromPayload(payload);
+            if (reasonText) {
+              updateTab(tabId, { streamingReasoning: reasonText });
+            }
+            scheduleDeltaIdle(tabId, runtimeSid);
+            scheduleStuckProbe(tabId, runtimeSid);
           }
-          scheduleDeltaIdle(tabId, runtimeSid);
-          scheduleStuckProbe(tabId, runtimeSid);
           break;
         }
 

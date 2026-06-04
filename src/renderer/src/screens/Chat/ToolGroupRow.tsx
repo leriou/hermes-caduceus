@@ -595,11 +595,12 @@ function ToolTable({
                 args = {};
               }
             } catch {
-              // Non-JSON args text — map to first column key or fall back to context
+              // Non-JSON args — use first 50 chars as a summary
               const raw = (call.args || "").trim();
-              if (raw) {
+              const snippet = raw.length > 50 ? raw.slice(0, 49) + "…" : raw;
+              if (snippet) {
                 const key = columns[0]?.key;
-                args = key ? { [key]: raw } : {};
+                args = key ? { [key]: snippet } : {};
               } else {
                 args = call.context ? { context: call.context } : {};
               }

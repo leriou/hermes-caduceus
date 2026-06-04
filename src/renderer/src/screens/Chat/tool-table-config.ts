@@ -135,6 +135,11 @@ export function fallbackColumns(argsJson: string): ColumnDef[] {
         render: (v: unknown) => truncate(String(v), 60),
       }));
   } catch {
+    // Non-JSON args — show first 50 chars as a generic "args" column
+    const snippet = argsJson.trim();
+    if (snippet) {
+      return [{ key: "args", label: "参数", render: () => truncate(snippet, 50) }];
+    }
     return [];
   }
 }

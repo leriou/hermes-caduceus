@@ -268,53 +268,6 @@ export const MessageList = memo(
     adjustForPrependedItems: (opts) => (virtuosoRef.current as any)?.adjustForPrependedItems(opts),
   }), [visibleMessages]);
 
-  const StreamingFooter = useMemo(() => {
-    if (!isLoading) return null;
-    return (
-      <div className="chat-messages-inner">
-        {!streamingText && !toolProgress && (
-          <ThinkingIndicator text={streamingReasoning} />
-        )}
-        {!streamingText && toolProgress && (
-          <ToolProgressIndicator toolProgress={toolProgress} messages={messages} />
-        )}
-        {todos.length > 0 && (
-          <TodoPanel todos={todos} defaultCollapsed />
-        )}
-        {streamingText && !streamingText.startsWith("[HCE COMPACTION") && (
-          <div className="chat-message chat-message-agent">
-            <HermesAvatar />
-            <div className="chat-bubble chat-bubble-agent">
-              <StreamingMarkdown>{stripHceCompaction(streamingText) || streamingText}</StreamingMarkdown>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }, [isLoading, streamingText, streamingReasoning, toolProgress, messages, todos]);
-
-  const streamingFooterRef = useRef<React.JSX.Element | null>(null);
-  streamingFooterRef.current = StreamingFooter;
-
-  const virtuosoComponents = useMemo(() => ({
-    Footer: () => <>{streamingFooterRef.current}</>,
-    List: forwardRef(function VirtuosoList(
-      { style, children, ...props }: any,
-      ref: any,
-    ) {
-      return (
-        <div
-          ref={ref}
-          {...props}
-          style={style}
-          className="chat-messages-inner"
-        >
-          {children}
-        </div>
-      );
-    }),
-  }), []);
-
   return (
     <Virtuoso<RenderTranscriptItem>
       ref={virtuosoRef}
@@ -327,7 +280,45 @@ export const MessageList = memo(
       itemContent={(index, msg) =>
         renderMessage(msg, index, visibleMessages.length, isLoading)
       }
-      components={virtuosoComponents}
+      components={{
+        Footer: () =>
+          isLoading ? (
+            <div className="chat-messages-inner">
+              {!streamingText && !toolProgress && (
+                <ThinkingIndicator text={streamingReasoning} />
+              )}
+              {!streamingText && toolProgress && (
+                <ToolProgressIndicator toolProgress={toolProgress} messages={messages} />
+              )}
+              {todos.length > 0 && (
+                <TodoPanel todos={todos} defaultCollapsed />
+              )}
+              {streamingText && !streamingText.startsWith("[HCE COMPACTION") && (
+                <div className="chat-message chat-message-agent">
+                  <HermesAvatar />
+                  <div className="chat-bubble chat-bubble-agent">
+                    <StreamingMarkdown>{stripHceCompaction(streamingText) || streamingText}</StreamingMarkdown>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null,
+        List: forwardRef(function VirtuosoList(
+          { style, children, ...props }: any,
+          ref: any,
+        ) {
+          return (
+            <div
+              ref={ref}
+              {...props}
+              style={style}
+              className="chat-messages-inner"
+            >
+              {children}
+            </div>
+          );
+        }),
+      }}
     />
   );
   })
