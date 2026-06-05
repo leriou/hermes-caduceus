@@ -270,21 +270,6 @@ export interface HermesAPI {
     status: "ok" | "no-key" | "unsupported" | "unknown-host";
     cached: boolean;
   }>;
-  onChatChunk: (callback: (chunk: string) => void) => () => void;
-  onChatDone: (callback: (sessionId?: string) => void) => () => void;
-  onChatToolProgress: (callback: (tool: string) => void) => () => void;
-  onChatUsage: (
-    callback: (usage: {
-      promptTokens: number;
-      completionTokens: number;
-      totalTokens: number;
-      cost?: number;
-      rateLimitRemaining?: number;
-      rateLimitReset?: number;
-    }) => void,
-  ) => () => void;
-  onChatUsageReset?: (callback: () => void) => () => void;
-  onChatError: (callback: (error: string) => void) => () => void;
 
   // Gateway
   startGateway: (profile?: string) => Promise<boolean>;

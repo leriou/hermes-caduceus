@@ -309,13 +309,7 @@ export function discoverProviderModels(
   });
 }
 
-// Chat events
-export function onChatChunk(callback: (chunk: string) => void): () => void {
-  return listenOnce("chatchunk", callback);
-}
-export function onChatDone(callback: (sessionId?: string) => void): () => void {
-  return listenOnce("chatdone", callback);
-}
+// Chat context-menu events (right-click menu in webview)
 export function onContextMenuCopyChat(
   callback: (format: "text" | "markdown") => void,
 ): () => void {
@@ -325,29 +319,6 @@ export function onContextMenuSelectBubble(
   callback: (point: { x: number; y: number }) => void,
 ): () => void {
   return listenOnce("contextmenuselectbubble", callback);
-}
-export function onChatToolProgress(
-  callback: (tool: string) => void,
-): () => void {
-  return listenOnce("chattoolprogress", callback);
-}
-export function onChatUsage(
-  callback: (usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    cost?: number;
-    rateLimitRemaining?: number;
-    rateLimitReset?: number;
-  }) => void,
-): () => void {
-  return listenOnce("chatusage", callback);
-}
-export function onChatUsageReset(callback: () => void): () => void {
-  return listenOnce("chatusagereset", callback);
-}
-export function onChatError(callback: (error: string) => void): () => void {
-  return listenOnce("chaterror", callback);
 }
 
 // Gateway
