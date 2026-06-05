@@ -426,7 +426,12 @@ function Chat({
     wsGatewayClient,
   });
 
-  const DEFAULT_SUGGESTIONS = ["Summarize my projects", "Write a Python script", "Search the web for news", "Help me debug code"];
+  const DEFAULT_SUGGESTIONS = [
+    t("chat.suggestionSearch") || "Search the web",
+    t("chat.suggestionScript") || "Write a script",
+    t("chat.suggestionEmail") || "Summarize emails",
+    t("chat.suggestionAnalyze") || "Analyze data",
+  ];
 
   const handleSuggestion = useCallback((text: string) => {
     chatInputRef.current?.setText(text);
@@ -604,7 +609,7 @@ function Chat({
             onClick={() => scrollToBottom(true)}
             type="button"
           >
-            Jump to latest ↓
+            {t("chat.jumpToLatest") || "Jump to latest ↓"}
           </button>
         )}
       </div>

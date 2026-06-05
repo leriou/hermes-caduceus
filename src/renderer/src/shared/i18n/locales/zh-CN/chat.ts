@@ -40,6 +40,7 @@ export default {
     "{{name}}：PDF/二进制附件需要本地模式 — 图片和文本文件仍可使用。",
   voiceStart: "语音输入",
   voiceStop: "停止录音",
+  jumpToLatest: "跳到最新 ↓",
   voiceDownloading: "正在下载模型... {{percent}}%",
   voiceTranscribing: "正在转写...",
   fastMode: "快速模式",
