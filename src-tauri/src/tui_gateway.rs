@@ -807,6 +807,10 @@ impl<R: Runtime> TuiGateway<R> {
             if let Err(e) = gateway.clone().spawn_process().await {
                 log_error("gateway", "reconnect", &format!("Reconnect spawn failed: {}", e));
                 gateway.record_failure(format!("Reconnect spawn failed: {}", e), GatewayStatus::Reconnecting).await;
+                {
+                    let mut inner = gateway.inner.lock().await;
+                    inner.reconnect_in_progress = false;
+                }
                 TuiGateway::handle_exit(gateway.clone());
                 return;
             }
@@ -856,6 +860,10 @@ impl<R: Runtime> TuiGateway<R> {
                 _ => {
                     log_error("gateway", "reconnect", "Reconnect timeout, retrying...");
                     gateway.record_failure("Reconnect timeout".to_string(), GatewayStatus::Reconnecting).await;
+                    {
+                        let mut inner = gateway.inner.lock().await;
+                        inner.reconnect_in_progress = false;
+                    }
                     TuiGateway::handle_exit(gateway.clone());
                 }
             }

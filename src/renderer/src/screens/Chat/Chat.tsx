@@ -154,8 +154,8 @@ function Chat({
   const goalSummary = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
-      if (m.kind === "system_event" && (m as any).event === "goal") {
-        return (m as any).title || (m as any).content || null;
+      if (m.kind === "system_event" && m.event === "goal") {
+        return m.title || m.content || null;
       }
     }
     return null;

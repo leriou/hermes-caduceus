@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from "react";
-import type { ChatMessage } from "./types";
+import type { ChatBubbleMessage, ChatMessage } from "./types";
 
 interface MessageTimelineNavigatorProps {
   messages: ChatMessage[];
@@ -17,10 +17,10 @@ export function MessageTimelineNavigator({
 
   const userMessages = useMemo(() => {
     return messages.filter(
-      (m) =>
+      (m): m is ChatBubbleMessage & { role: "user" } =>
         m.role === "user" &&
         (!("kind" in m) || !m.kind || m.kind === "user") &&
-        ((m as any).content || "").trim().length > 0
+        m.content.trim().length > 0
     );
   }, [messages]);
 
@@ -55,7 +55,7 @@ export function MessageTimelineNavigator({
       });
     }
 
-    const rawContent = (msg as any).content || "";
+    const rawContent = msg.content;
     const summaryText =
       rawContent.length > 25 ? rawContent.slice(0, 22) + "…" : rawContent;
 
