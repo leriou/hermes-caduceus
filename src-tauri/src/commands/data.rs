@@ -1,5 +1,5 @@
 use serde_json::{json, Value};
-use tauri::{command, State, AppHandle};
+use tauri::{command, Emitter, State, AppHandle};
 use crate::AppState;
 use std::fs;
 use crate::python;
@@ -578,13 +578,15 @@ pub fn voice_start(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[command]
-pub async fn voice_stop(state: State<'_, AppState>) -> Result<String, String> {
+pub async fn voice_stop(app: AppHandle, state: State<'_, AppState>) -> Result<String, String> {
     let voice = state.voice.clone();
-    tauri::async_runtime::spawn_blocking(move || {
+    let result = tauri::async_runtime::spawn_blocking(move || {
         crate::voice_input::voice_stop_and_transcribe(&voice)
     })
     .await
-    .map_err(|e| format!("Voice transcription task failed: {}", e))?
+    .map_err(|e| format!("Voice transcription task failed: {}", e))??;
+    let _ = app.emit("voice-recording-stopped", ());
+    Ok(result)
 }
 
 /// Collect metrics from a specific plugin or all plugins.
