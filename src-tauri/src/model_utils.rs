@@ -145,7 +145,14 @@ pub fn add_model(app: Option<&AppHandle>, name: String, provider: String, model:
     }
 
     write_yaml(app, profile, &root)?;
-    Ok(json!({ "success": true }))
+    Ok(json!({
+        "id": format!("{}:{}", prov_name, model_id),
+        "name": model_id,
+        "provider": provider,
+        "model": model_id,
+        "baseUrl": base_url,
+        "createdAt": chrono::Utc::now().timestamp(),
+    }))
 }
 
 pub fn remove_model(app: Option<&AppHandle>, id: String, profile: Option<String>) -> Result<Value, String> {

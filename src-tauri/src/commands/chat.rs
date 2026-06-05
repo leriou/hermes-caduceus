@@ -5,29 +5,6 @@ use crate::config_utils;
 use crate::model_store;
 use crate::python;
 use std::fs;
-#[command]
-pub async fn send_message(
-    state: State<'_, AppState>,
-    message: String,
-    _profile: Option<String>,
-    resume_session_id: Option<String>,
-    _history: Option<Value>,
-    _attachments: Option<Value>,
-    _context_folder: Option<String>
-) -> Result<Value, String> {
-    let gw = { state.gateway.lock().await.as_ref().cloned().ok_or("Gateway not running")? };
-    
-    let session_id = if let Some(sid) = resume_session_id {
-        sid
-    } else {
-        let res = gw.call("session.create", json!({})).await.map_err(|e| e.to_string())?;
-        res.get("session_id").and_then(|v| v.as_str()).ok_or("Failed to create session")?.to_string()
-    };
-
-    gw.call("prompt.submit", json!({ "session_id": session_id, "text": message })).await.map_err(|e| e.to_string())?;
-    
-    Ok(json!({ "response": "streaming", "sessionId": session_id }))
-}
 
 #[command]
 pub async fn abort_chat(state: State<'_, AppState>) -> Result<Value, String> {

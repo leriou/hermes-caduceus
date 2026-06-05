@@ -2,7 +2,7 @@ use serde_json::{json, Value};
 use tauri::{command, AppHandle};
 
 use crate::config_utils;
-use crate::model_store::{self, ClientModel, ClientProvider, ModelConfigStore};
+use crate::model_store::{self, ClientModel, ClientProvider};
 use crate::model_translation;
 use crate::python;
 
@@ -40,22 +40,6 @@ pub async fn read_model_store(
     }
 
     serde_json::to_value(&merged).map_err(|e| format!("Failed to serialize store: {}", e))
-}
-
-/// Write the full model store to desktop-models.json and sync to config.yaml.
-#[command]
-pub async fn write_model_store(
-    app: AppHandle,
-    store: Value,
-    profile: Option<String>,
-) -> Result<Value, String> {
-    let model_store: ModelConfigStore = serde_json::from_value(store)
-        .map_err(|e| format!("Failed to deserialize store: {}", e))?;
-
-    model_store::write_model_store(Some(&app), &model_store, profile.clone())?;
-    model_translation::sync_to_config_yaml(Some(&app), &model_store, profile)?;
-
-    Ok(json!({"success": true}))
 }
 
 /// Register a new provider: create ClientProvider, write API key to .env, save store, sync config.

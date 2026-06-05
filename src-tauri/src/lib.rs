@@ -143,9 +143,9 @@ pub fn run() {
         read_memory, read_soul, refresh_hermes_version, register_provider, remove_cron_job, 
         remove_memory_entry, remove_model, reset_soul, resume_cron_job, 
         run_hermes_backup, run_hermes_doctor, run_hermes_dump, run_hermes_import, 
-        run_hermes_update, run_model_migration, save_model, search_sessions, select_folder, select_hermes_folder, 
-        send_message, set_active_profile, set_config, set_connection_config, 
-        set_credential_pool, set_env, set_locale, set_model_config, set_routing_config, 
+        run_hermes_update, run_model_migration, save_model, search_sessions, select_folder, select_hermes_folder,
+        set_active_profile, set_config, set_connection_config,
+        set_credential_pool, set_env, set_locale, set_model_config,
         set_platform_enabled, set_plugin_enabled, set_ssh_config, 
         set_toolset_enabled, stage_attachment, start_gateway, start_install, 
         start_ssh_tunnel, stop_gateway, stop_ssh_tunnel, sync_session_cache, 
@@ -158,11 +158,11 @@ pub fn run() {
         tui_session_status, tui_session_title, tui_session_usage, tui_set_goal,
         tui_set_model, tui_slash_exec, tui_steer, tui_submit_prompt, 
         tui_tools_configure, tui_tools_list, tui_tools_show, tui_undo, 
-        uninstall_skill, unregister_provider, update_cron_job, update_memory_entry, update_model, 
-        update_session_title, validate_hermes_home, verify_install, voice_tts,
+        uninstall_skill, unregister_provider, update_cron_job, update_memory_entry, update_model,
+        validate_hermes_home, verify_install, voice_tts,
         voice_model_status, voice_download_model, voice_start, voice_stop,
-        get_plugin_metrics, 
-        write_config_yaml, write_memory, write_model_store, write_soul, write_user_profile
+        get_plugin_metrics,
+        write_config_yaml, write_memory, write_soul, write_user_profile
     ])
     .build(tauri::generate_context!())
     .expect("error while building tauri application")

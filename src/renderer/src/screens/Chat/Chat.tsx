@@ -5,8 +5,6 @@ import {
   deleteSessionChain,
   isRemoteMode,
   tuiClarifyRespond,
-  onContextMenuCopyChat,
-  onContextMenuSelectBubble,
   selectFolder,
 } from "@renderer/lib/hermes-tauri";
 import { getStoreItem, setStoreItem } from "@renderer/utils/store";
@@ -312,15 +310,10 @@ function Chat({
     return () => window.removeEventListener("keydown", onKey);
   }, [onNewChat, visible]);
 
-  // --- Context menu handlers ---
+  // --- Copy chat transcript (native menu) ---
 
   useEffect(() => {
     if (!visible) return;
-    const unsub = onContextMenuCopyChat((format) => {
-      const msgs = messagesRef.current;
-      if (msgs.length === 0) return;
-      void copyToClipboard(buildChatTranscript(msgs, format));
-    });
     const handleCustom = (e: Event) => {
       const format = (e as CustomEvent).detail;
       const msgs = messagesRef.current;
@@ -329,20 +322,8 @@ function Chat({
     };
     window.addEventListener("hermes-copy-chat", handleCustom);
     return () => {
-      unsub();
       window.removeEventListener("hermes-copy-chat", handleCustom);
     };
-  }, [visible]);
-
-  useEffect(() => {
-    if (!visible) return;
-    return onContextMenuSelectBubble(({ x, y }) => {
-      const bubble = document.elementFromPoint(x, y)?.closest(".chat-bubble");
-      if (!bubble) return;
-      const selection = window.getSelection();
-      selection?.removeAllRanges();
-      selection?.selectAllChildren(bubble);
-    });
   }, [visible]);
 
   // --- Clear / verbose ---

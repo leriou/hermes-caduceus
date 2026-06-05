@@ -102,8 +102,6 @@ function installHermesAPI() {
     getConfig: vi.fn().mockResolvedValue(""),
     setConfig: vi.fn().mockResolvedValue(true),
     onTuiEvent: vi.fn().mockImplementation(() => () => {}),
-    onContextMenuCopyChat: vi.fn().mockImplementation(() => () => {}),
-    onContextMenuSelectBubble: vi.fn().mockImplementation(() => () => {}),
     copyToClipboard: vi.fn().mockResolvedValue(undefined),
     selectFolder: vi.fn().mockResolvedValue(null),
     deleteSession: vi.fn().mockResolvedValue(undefined),

@@ -237,22 +237,8 @@ export interface HermesAPI {
   stopSshTunnel: () => Promise<boolean>;
 
   // Chat
-  sendMessage: (
-    message: string,
-    profile?: string,
-    resumeSessionId?: string,
-    history?: Array<{ role: string; content: string }>,
-    attachments?: Attachment[],
-    contextFolder?: string,
-  ) => Promise<{ response: string; sessionId?: string }>;
   abortChat: () => Promise<void>;
   copyToClipboard: (text: string) => Promise<void>;
-  onContextMenuCopyChat: (
-    callback: (format: "text" | "markdown") => void,
-  ) => () => void;
-  onContextMenuSelectBubble: (
-    callback: (point: { x: number; y: number }) => void,
-  ) => () => void;
   getPathForFile: (file: File) => string;
   stageAttachment: (
     sessionId: string,
@@ -484,7 +470,6 @@ export interface HermesAPI {
       model: string;
     }>
   >;
-  updateSessionTitle: (sessionId: string, title: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
 
   // Session search
@@ -747,15 +732,6 @@ export interface HermesAPI {
     fallbacks?: Array<{ model: string; provider: string }>;
     fallbackProviders?: Array<{ model: string; provider: string }>;
   }>;
-  setRoutingConfig: (
-    data: {
-      defaultModel?: string;
-      defaultProvider?: string;
-      defaultBaseUrl?: string;
-      fallbacks?: Array<{ model: string; provider: string }>;
-    },
-    profile?: string,
-  ) => Promise<boolean>;
 
   // Config YAML editor
   readConfigYaml: (

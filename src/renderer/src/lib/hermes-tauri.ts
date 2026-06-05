@@ -255,23 +255,6 @@ export function stopSshTunnel(): Promise<boolean> {
 }
 
 // Chat
-export function sendMessage(
-  message: string,
-  profile?: string,
-  resumeSessionId?: string,
-  history?: Array<{ role: string; content: string }>,
-  attachments?: Attachment[],
-  contextFolder?: string,
-): Promise<{ response: string; sessionId?: string }> {
-  return invoke("send_message", {
-    message,
-    profile,
-    resumeSessionId,
-    history,
-    attachments,
-    contextFolder,
-  });
-}
 export function abortChat(): Promise<void> {
   return invoke("abort_chat");
 }
@@ -307,18 +290,6 @@ export function discoverProviderModels(
     apiKey,
     profile,
   });
-}
-
-// Chat context-menu events (right-click menu in webview)
-export function onContextMenuCopyChat(
-  callback: (format: "text" | "markdown") => void,
-): () => void {
-  return listenOnce("contextmenucopychat", callback);
-}
-export function onContextMenuSelectBubble(
-  callback: (point: { x: number; y: number }) => void,
-): () => void {
-  return listenOnce("contextmenuselectbubble", callback);
 }
 
 // Gateway
@@ -529,12 +500,6 @@ export function syncSessionCache(profile?: string): Promise<
   }>
 > {
   return invoke("sync_session_cache", { profile });
-}
-export function updateSessionTitle(
-  sessionId: string,
-  title: string,
-): Promise<void> {
-  return invoke("update_session_title", { sessionId, title });
 }
 export function searchSessions(
   query: string,
@@ -1158,14 +1123,6 @@ export function readModelStore(profile?: string): Promise<ModelConfigStore> {
   return invoke("read_model_store", { profile });
 }
 
-/** Save the full model store to desktop-models.json and sync to config.yaml */
-export function writeModelStore(
-  store: ModelConfigStore,
-  profile?: string,
-): Promise<ModelConfigStore> {
-  return invoke("write_model_store", { store, profile });
-}
-
 /** Register a new provider (saves to store + writes API key to .env) */
 export function registerProvider(
   input: RegisterProviderInput,
@@ -1197,13 +1154,6 @@ export function deleteModel(
   profile?: string,
 ): Promise<boolean> {
   return invoke("delete_model", { modelId, providerId, profile });
-}
-
-export function setRoutingConfig(
-  data: RoutingConfig,
-  profile?: string,
-): Promise<boolean> {
-  return invoke("set_routing_config", { data, profile });
 }
 
 // Config YAML editor

@@ -75,15 +75,6 @@ pub async fn sync_session_cache(state: State<'_, AppState>, app: AppHandle, prof
 }
 
 #[command]
-pub async fn update_session_title(state: State<'_, AppState>, session_id: String, title: String) -> Result<Value, String> {
-    let gateway = state.gateway.lock().await;
-    if let Some(gw) = gateway.as_ref() {
-        let _ = gw.call("session.rename", json!({ "session_id": session_id, "title": title })).await;
-    }
-    Ok(json!({ "success": true }))
-}
-
-#[command]
 pub async fn search_sessions(state: State<'_, AppState>, app: AppHandle, query: String, limit: Option<u32>, profile: Option<String>) -> Result<Value, String> {
     let gateway = state.gateway.lock().await;
     let gw = match gateway.as_ref() {
