@@ -6,6 +6,7 @@ use std::process::Command;
 use tauri::AppHandle;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ProfileInfo {
     pub name: String,
     pub path: String,
