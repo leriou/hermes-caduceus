@@ -266,7 +266,7 @@ The Office screen detects Claw3D on the desktop host, not on the VPS.
 If you're already running `hermes-office.service` on the VPS, that
 service is independent of this screen — visit it directly at
 `http://<vps>:3000`. Tighter integration is tracked in
-[#196](https://github.com/fathah/hermes-desktop/issues/196).
+[#196](https://github.com/leriou/hermes-caduceus/issues/196).
 
 ### `Test SSH Connection` succeeds but chat fails with 401 or auth errors
 
@@ -299,8 +299,8 @@ restart until the upstream fix lands.
   on root. The Hermes user is already what runs the agent; giving it
   inbound SSH does not expand the blast radius.
 
-[#159]: https://github.com/fathah/hermes-desktop/issues/159
-[#182]: https://github.com/fathah/hermes-desktop/issues/182
-[#195]: https://github.com/fathah/hermes-desktop/issues/195
-[#204]: https://github.com/fathah/hermes-desktop/pull/204
-[#205]: https://github.com/fathah/hermes-desktop/pull/205
+[#159]: https://github.com/leriou/hermes-caduceus/issues/159
+[#182]: https://github.com/leriou/hermes-caduceus/issues/182
+[#195]: https://github.com/leriou/hermes-caduceus/issues/195
+[#204]: https://github.com/leriou/hermes-caduceus/pull/204
+[#205]: https://github.com/leriou/hermes-caduceus/pull/205

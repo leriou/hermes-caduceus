@@ -4,8 +4,8 @@
 
 <br/>
 <p align="center">
-  <a href="https://github.com/fathah/hermes-caduceus/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://github.com/fathah/hermes-caduceus/releases/"><img src="https://img.shields.io/badge/macOS-Download-FF6600?style=for-the-badge" alt="Releases"></a>
+  <a href="https://github.com/leriou/hermes-caduceus/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/leriou/hermes-caduceus/releases/"><img src="https://img.shields.io/badge/macOS-Download-FF6600?style=for-the-badge" alt="Releases"></a>
 </p>
 
 > **Fork of [hermes-desktop](https://github.com/NousResearch/hermes-desktop)** — deeply customized and optimized for macOS. Rewritten from Electron to Tauri 2 + React 19 with a focus on native performance, architecture cleanliness, and macOS-specific optimizations.
@@ -155,7 +155,7 @@ Hermes Caduceus is not just a cross-platform port; it is built to feel like a fi
 
 ## Installation
 
-1. **Download** the latest `.dmg` from [Releases](https://github.com/fathah/hermes-caduceus/releases/).
+1. **Download** the latest `.dmg` from [Releases](https://github.com/leriou/hermes-caduceus/releases/).
 2. **Move to Applications** — open the `.dmg` and drag `Hermes Caduceus` to `/Applications`.
 3. **First launch** — right-click → **Open** (required for self-signed apps), or run:
    ```bash

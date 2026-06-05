@@ -4,7 +4,7 @@
 
 If you discover a security vulnerability, please report it **privately**:
 
-- Open a GitHub [security advisory](https://github.com/fathah/hermes-caduceus/security/advisories/new)
+- Open a GitHub [security advisory](https://github.com/leriou/hermes-caduceus/security/advisories/new)
 
 **Do not open a public issue for security vulnerabilities.**
 

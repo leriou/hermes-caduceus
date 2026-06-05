@@ -29,7 +29,7 @@ Examples of unacceptable behavior:
 ## Enforcement
 
 Instances of unacceptable behavior may be reported by opening a private
-[security advisory](https://github.com/fathah/hermes-caduceus/security/advisories/new).
+[security advisory](https://github.com/leriou/hermes-caduceus/security/advisories/new).
 
 All complaints will be reviewed fairly and promptly.
 

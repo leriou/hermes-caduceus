@@ -4,8 +4,8 @@
 
 <br/>
 <p align="center">
-  <a href="https://github.com/fathah/hermes-caduceus/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://github.com/fathah/hermes-caduceus/releases/"><img src="https://img.shields.io/badge/macOS-下载-FF6600?style=for-the-badge" alt="Releases"></a>
+  <a href="https://github.com/leriou/hermes-caduceus/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/leriou/hermes-caduceus/releases/"><img src="https://img.shields.io/badge/macOS-下载-FF6600?style=for-the-badge" alt="Releases"></a>
  
 </p>
 
@@ -155,7 +155,7 @@ Hermes Caduceus 不仅仅是一个跨平台应用的移植版，它是为 macOS 
 
 ## 安装指南
 
-1. **下载** 最新 `.dmg`：[Releases](https://github.com/fathah/hermes-caduceus/releases/)
+1. **下载** 最新 `.dmg`：[Releases](https://github.com/leriou/hermes-caduceus/releases/)
 2. **安装** —— 打开 `.dmg`，将 `Hermes Caduceus` 拖入 `/Applications`
 3. **首次启动** —— 右键 → **打开**（自签名应用需要），或执行：
    ```bash
