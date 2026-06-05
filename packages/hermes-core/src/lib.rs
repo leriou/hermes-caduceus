@@ -130,7 +130,7 @@ fn load_persisted_messages(desktop_dir: &str, session_id: &str) -> Result<Vec<Va
             "tool_call" => {
                 let name = m.get("tool_name").and_then(|v| v.as_str()).unwrap_or("tool").to_string();
                 let call_id = m.get("tool_call_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                items.push(json!({ "kind": "tool_call", "id": idx, "callId": call_id, "name": name, "args": content, "timestamp": timestamp }));
+                items.push(json!({ "kind": "tool_call", "id": idx, "assistantId": idx, "callId": call_id, "name": name, "args": content, "timestamp": timestamp }));
             }
             _ => {}
         }
@@ -818,6 +818,11 @@ fn session_json_log_fallback(sessions_dir: &str, session_id: &str) -> Result<Vec
                 let name = m.get("tool_name").and_then(|v| v.as_str()).unwrap_or("tool").to_string();
                 let call_id = m.get("tool_call_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
                 items.push(json!({ "kind": "tool_result", "id": idx, "callId": call_id, "name": name, "content": content, "timestamp": 0 }));
+            }
+            "tool_call" => {
+                let name = m.get("tool_name").and_then(|v| v.as_str()).unwrap_or("tool").to_string();
+                let call_id = m.get("tool_call_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                items.push(json!({ "kind": "tool_call", "id": idx, "assistantId": idx, "callId": call_id, "name": name, "args": content, "timestamp": 0 }));
             }
             _ => {}
         }
