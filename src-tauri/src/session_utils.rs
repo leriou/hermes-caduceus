@@ -109,6 +109,7 @@ fn read_sessions_from_db(db_path: &std::path::Path, limit: Option<u32>, offset: 
             "id": id,
             "title": title,
             "startedAt": started_at,
+            "endedAt": null,
             "source": source,
             "messageCount": message_count,
             "model": model,

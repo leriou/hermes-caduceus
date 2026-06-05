@@ -104,6 +104,7 @@ pub fn snake_to_camel_sessions(val: Value) -> Vec<Value> {
             "id": id,
             "title": title,
             "startedAt": started_at,
+            "endedAt": null,
             "source": source,
             "messageCount": message_count,
             "model": model,
