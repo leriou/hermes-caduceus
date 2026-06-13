@@ -42,3 +42,32 @@ jobs:
       - name: Lint
         run: npm run lint
         continue-on-error: true
+
+  rust:
+    name: Rust (check + clippy + test)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      # macOS runner matches release.yml so tauri's macos-private-api feature
+      # is exercised. Workspace covers both src-tauri and packages/hermes-core.
+      - name: cargo check
+        run: cargo check --workspace --all-targets
+
+      # Disable default features so hermes-core builds without its `napi`
+      # feature (Node addon symbols only resolve when linking against Node).
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets --no-default-features -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace --lib --no-default-features
+

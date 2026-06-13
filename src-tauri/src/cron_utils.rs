@@ -234,6 +234,7 @@ pub fn list_cron_history(app: Option<&AppHandle>, profile: Option<String>) -> Re
 
     let mut entries = Vec::new();
     let entries_result = fs::read_dir(&output_dir);
+    let run_at_re = regex::Regex::new(r"^(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})").unwrap();
     if let Ok(dir_entries) = entries_result {
         for job_id_entry in dir_entries {
             let job_id_entry = match job_id_entry { Ok(e) => e, Err(_) => continue };
@@ -247,10 +248,7 @@ pub fn list_cron_history(app: Option<&AppHandle>, profile: Option<String>) -> Re
                 let fname = run_entry.file_name().to_string_lossy().to_string();
                 let st = match fs::metadata(&full) { Ok(s) => s, Err(_) => continue };
                 let status = if st.len() == 0 { "empty" } else { "ok" };
-                let run_at = if let Some(caps) = regex::Regex::new(r"^(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})")
-                    .ok()
-                    .and_then(|re| re.captures(&fname))
-                {
+                let run_at = if let Some(caps) = run_at_re.captures(&fname) {
                     format!("{}T{}:{}:{}", &caps[1], &caps[2], &caps[3], &caps[4])
                 } else {
                     fname.trim_end_matches(".md").to_string()

@@ -117,11 +117,10 @@ fn load_persisted_messages(desktop_dir: &str, session_id: &str) -> Result<Vec<Va
                 if content.is_empty() { continue; }
                 items.push(json!({ "kind": "user", "id": idx, "content": content, "timestamp": timestamp }));
             }
-            "assistant" => {
-                if !content.is_empty() {
+            "assistant"
+                if !content.is_empty() => {
                     items.push(json!({ "kind": "assistant", "id": idx, "content": content, "timestamp": timestamp }));
                 }
-            }
             "tool" => {
                 let name = m.get("tool_name").and_then(|v| v.as_str()).unwrap_or("tool").to_string();
                 let call_id = m.get("tool_call_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
@@ -173,9 +172,7 @@ fn decode_content_full(raw: &str, message_id: i64) -> DecodedContent {
                             let url = if let Some(ref_val) = obj.get("image_url") {
                                 if let Some(u) = ref_val.as_str() {
                                     Some(u.to_string())
-                                } else if let Some(u) = ref_val.get("url").and_then(|v| v.as_str()) {
-                                    Some(u.to_string())
-                                } else { None }
+                                } else { ref_val.get("url").and_then(|v| v.as_str()).map(|u| u.to_string()) }
                             } else { None };
                             if let Some(url) = url {
                                 if url.starts_with("data:image/") {
@@ -677,15 +674,9 @@ pub fn delete_session_from_db(db_path: String, session_id: String) -> bool {
         Ok(c) => c,
         Err(_) => return false,
     };
-    match conn.execute_batch(&format!(
-        "DELETE FROM messages WHERE session_id = '{}';
-         DELETE FROM sessions WHERE id = '{}';",
-        session_id.replace('\'', "''"),
-        session_id.replace('\'', "''"),
-    )) {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    let r1 = conn.execute("DELETE FROM messages WHERE session_id = ?1", rusqlite::params![session_id]);
+    let r2 = conn.execute("DELETE FROM sessions WHERE id = ?1", rusqlite::params![session_id]);
+    r1.is_ok() && r2.is_ok()
 }
 
 #[cfg_attr(feature = "napi", napi)]
@@ -778,10 +769,8 @@ pub fn refresh_message_counts(db_path: String, ids_json: String) -> String {
             Ok(r) => r,
             Err(_) => continue,
         };
-        for row in rows {
-            if let Ok((id, count)) = row {
-                result.insert(id, json!(count));
-            }
+        for (id, count) in rows.flatten() {
+            result.insert(id, json!(count));
         }
     }
     serde_json::to_string(&Value::Object(result)).unwrap_or_else(|_| "{}".to_string())
@@ -809,11 +798,10 @@ fn session_json_log_fallback(sessions_dir: &str, session_id: &str) -> Result<Vec
                 if content.is_empty() { continue; }
                 items.push(json!({ "kind": "user", "id": idx, "content": content, "timestamp": 0 }));
             }
-            "assistant" => {
-                if !content.is_empty() {
+            "assistant"
+                if !content.is_empty() => {
                     items.push(json!({ "kind": "assistant", "id": idx, "content": content, "timestamp": 0 }));
                 }
-            }
             "tool" => {
                 let name = m.get("tool_name").and_then(|v| v.as_str()).unwrap_or("tool").to_string();
                 let call_id = m.get("tool_call_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
@@ -828,4 +816,221 @@ fn session_json_log_fallback(sessions_dir: &str, session_id: &str) -> Result<Vec
         }
     }
     Ok(items)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── yaml_to_json ────────────────────────────────────────
+
+    #[test]
+    fn yaml_to_json_converts_flat_mapping() {
+        let yaml = "name: hermes\nversion: 4\n";
+        let json = yaml_to_json(yaml.to_string()).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["name"], "hermes");
+        assert_eq!(parsed["version"], 4);
+    }
+
+    #[test]
+    fn yaml_to_json_preserves_nested_structures() {
+        let yaml = "outer:\n  inner: value\n  list:\n    - a\n    - b\n";
+        let json = yaml_to_json(yaml.to_string()).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["outer"]["inner"], "value");
+        assert_eq!(parsed["outer"]["list"][1], "b");
+    }
+
+    #[test]
+    fn yaml_to_json_returns_none_for_invalid_input() {
+        assert!(yaml_to_json("{ unclosed".to_string()).is_none());
+    }
+
+    // ── json_to_yaml ────────────────────────────────────────
+
+    #[test]
+    fn json_to_yaml_round_trips_through_yaml_to_json() {
+        let original = r#"{"key":"value","number":42}"#;
+        let yaml = json_to_yaml(original.to_string()).unwrap();
+        let json = yaml_to_json(yaml).unwrap();
+        let parsed: Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["key"], "value");
+        assert_eq!(parsed["number"], 42);
+    }
+
+    #[test]
+    fn json_to_yaml_returns_none_for_invalid_input() {
+        assert!(json_to_yaml("not json {".to_string()).is_none());
+    }
+
+    // ── get_yaml_config_value ───────────────────────────────
+
+    #[test]
+    fn get_yaml_config_value_reads_top_level_key() {
+        let yaml = "model: claude-sonnet-4-5\nprovider: anthropic\n";
+        let v = get_yaml_config_value(yaml.to_string(), "model".to_string());
+        assert_eq!(v.as_deref(), Some("claude-sonnet-4-5"));
+    }
+
+    #[test]
+    fn get_yaml_config_value_returns_none_for_missing_key() {
+        let yaml = "model: claude\n";
+        let v = get_yaml_config_value(yaml.to_string(), "nonexistent".to_string());
+        assert!(v.is_none());
+    }
+
+    // ── set_yaml_config_value ───────────────────────────────
+
+    #[test]
+    fn set_yaml_config_value_replaces_existing_top_level_key() {
+        let yaml = "model: old\nprovider: anthropic\n";
+        let out = set_yaml_config_value(yaml.to_string(), "model".to_string(), "new".to_string());
+        assert!(out.contains("model: \"new\""));
+        assert!(!out.contains("model: old"));
+        assert!(out.contains("provider: anthropic"));
+    }
+
+    #[test]
+    fn set_yaml_config_value_appends_missing_key() {
+        let yaml = "model: claude\n";
+        let out = set_yaml_config_value(yaml.to_string(), "temperature".to_string(), "0.7".to_string());
+        assert!(out.contains("temperature: \"0.7\""));
+        assert!(out.contains("model: claude"));
+    }
+
+    // ── get_model_aliases_from_yaml ─────────────────────────
+
+    #[test]
+    fn get_model_aliases_parses_named_entries_with_camel_case_fields() {
+        let yaml = "\
+model_aliases:
+  fast:
+    provider: anthropic
+    model: claude-haiku
+    base_url: https://api.anthropic.com
+    context_length: 200000
+  smart:
+    provider: openai
+    model: gpt-4
+";
+        let out = get_model_aliases_from_yaml(yaml.to_string());
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        let arr = parsed.as_array().unwrap();
+        assert_eq!(arr.len(), 2);
+        let by_name: std::collections::HashMap<&str, &Value> = arr
+            .iter()
+            .map(|v| (v["name"].as_str().unwrap(), v))
+            .collect();
+        assert_eq!(by_name["fast"]["model"], "claude-haiku");
+        assert_eq!(by_name["fast"]["provider"], "anthropic");
+        assert_eq!(by_name["fast"]["baseUrl"], "https://api.anthropic.com");
+        assert_eq!(by_name["fast"]["contextLength"], 200000);
+        assert_eq!(by_name["smart"]["provider"], "openai");
+    }
+
+    #[test]
+    fn get_model_aliases_returns_empty_array_when_block_absent() {
+        let out = get_model_aliases_from_yaml("model: claude\n".to_string());
+        assert_eq!(out, "[]");
+    }
+
+    // ── parse_toolsets_from_yaml / set_toolsets_in_yaml ─────
+
+    const TOOLSETS_YAML: &str = "\
+platform_toolsets:
+  cli:
+    - filesystem
+    - shell
+model: claude
+";
+
+    #[test]
+    fn parse_toolsets_returns_sorted_enabled_set() {
+        let out = parse_toolsets_from_yaml(TOOLSETS_YAML.to_string());
+        let parsed: Vec<String> = serde_json::from_str(&out).unwrap();
+        assert_eq!(parsed, vec!["filesystem".to_string(), "shell".to_string()]);
+    }
+
+    #[test]
+    fn parse_toolsets_returns_empty_array_when_section_absent() {
+        let out = parse_toolsets_from_yaml("model: claude\n".to_string());
+        assert_eq!(out, "[]");
+    }
+
+    #[test]
+    fn set_toolsets_enable_adds_entry_preserving_existing() {
+        let out = set_toolsets_in_yaml(TOOLSETS_YAML.to_string(), "web".to_string(), true).unwrap();
+        let reparsed = parse_toolsets_from_yaml(out);
+        let parsed: Vec<String> = serde_json::from_str(&reparsed).unwrap();
+        assert!(parsed.contains(&"filesystem".to_string()));
+        assert!(parsed.contains(&"shell".to_string()));
+        assert!(parsed.contains(&"web".to_string()));
+    }
+
+    #[test]
+    fn set_toolsets_disable_removes_entry_preserving_others() {
+        let out = set_toolsets_in_yaml(TOOLSETS_YAML.to_string(), "shell".to_string(), false).unwrap();
+        let reparsed = parse_toolsets_from_yaml(out);
+        let parsed: Vec<String> = serde_json::from_str(&reparsed).unwrap();
+        assert!(!parsed.contains(&"shell".to_string()));
+        assert!(parsed.contains(&"filesystem".to_string()));
+    }
+
+    // ── list_mcp_servers_from_yaml ─────────────────────────
+
+    #[test]
+    fn list_mcp_servers_parses_named_servers() {
+        let yaml = "\
+mcp_servers:
+  filesystem:
+    command: npx
+  fetch:
+    url: https://example.com/mcp
+    enabled: false
+";
+        let out = list_mcp_servers_from_yaml(yaml.to_string());
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        let arr = parsed.as_array().unwrap();
+        assert_eq!(arr.len(), 2);
+        let by_name: std::collections::HashMap<&str, &Value> = arr
+            .iter()
+            .map(|v| (v["name"].as_str().unwrap(), v))
+            .collect();
+        assert_eq!(by_name["filesystem"]["type"], "stdio");
+        assert_eq!(by_name["filesystem"]["detail"], "npx");
+        assert_eq!(by_name["filesystem"]["enabled"], true);
+        assert_eq!(by_name["fetch"]["type"], "http");
+        assert_eq!(by_name["fetch"]["detail"], "https://example.com/mcp");
+        assert_eq!(by_name["fetch"]["enabled"], false);
+    }
+
+    #[test]
+    fn list_mcp_servers_returns_empty_array_when_block_absent() {
+        let out = list_mcp_servers_from_yaml("model: claude\n".to_string());
+        assert_eq!(out, "[]");
+    }
+
+    // ── list_plugins_from_yaml ─────────────────────────────
+
+    #[test]
+    fn list_plugins_parses_named_plugins() {
+        let yaml = "\
+plugins:
+  context:
+    enabled: true
+  memory:
+    enabled: false
+";
+        let out = list_plugins_from_yaml(yaml.to_string());
+        let parsed: Value = serde_json::from_str(&out).unwrap();
+        let arr = parsed.as_array().unwrap();
+        assert_eq!(arr.len(), 2);
+    }
+
+    #[test]
+    fn list_plugins_returns_empty_array_when_block_absent() {
+        let out = list_plugins_from_yaml("model: claude\n".to_string());
+        assert_eq!(out, "[]");
+    }
 }

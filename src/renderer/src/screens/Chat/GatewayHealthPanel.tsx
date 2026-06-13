@@ -20,9 +20,36 @@ import {
   FolderOpen
 } from "lucide-react";
 
+interface GatewayHealth {
+  status: string;
+  mode?: unknown;
+  restartCount?: number;
+  maxRestarts?: number;
+  activeSessionId?: string | null;
+  lastError?: string | null;
+  lastReadyAt?: number | null;
+  pendingRequests?: number;
+  failures?: unknown[];
+  paths?: {
+    python?: string;
+    pythonExists?: boolean;
+    repo?: string;
+    repoExists?: boolean;
+    home?: string;
+    homeExists?: boolean;
+  } | null;
+}
+
+interface GatewayBuildInfo {
+  version?: string;
+  gitCommit?: string;
+  appDataDir?: string;
+  [key: string]: unknown;
+}
+
 export function GatewayHealthPanel(): React.JSX.Element {
-  const [health, setHealth] = useState<any>(null);
-  const [buildInfo, setBuildInfo] = useState<any>(null);
+  const [health, setHealth] = useState<GatewayHealth | null>(null);
+  const [buildInfo, setBuildInfo] = useState<GatewayBuildInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);

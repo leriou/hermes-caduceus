@@ -447,7 +447,7 @@ impl<R: Runtime> TuiGateway<R> {
         let ws_write_clone = ws_write.clone();
         tokio::spawn(async move {
             while let Some(line) = stdin_rx.recv().await {
-                let msg = Message::Text(line.into());
+                let msg = Message::Text(line);
                 if ws_write_clone.lock().await.send(msg).await.is_err() {
                     log_error("gateway", "ws_write", "Failed to send WS message");
                     break;
@@ -923,7 +923,7 @@ impl<R: Runtime> TuiGateway<R> {
         }
 
         let json = serde_json::to_string(&request)?;
-        if let Err(_) = stdin_tx.send(json).await {
+        if stdin_tx.send(json).await.is_err() {
             let mut pending = self.pending_requests.lock().unwrap();
             pending.remove(&id);
             return Err(anyhow!("Gateway stdin channel closed"));
@@ -971,8 +971,9 @@ mod tests {
 
         let mode = GatewayMode::WebSocket { port: 9000, host: "127.0.0.1".into() };
         let json = serde_json::to_value(&mode).unwrap();
-        assert_eq!(json["port"], 9000);
-        assert_eq!(json["host"], "127.0.0.1");
+        let inner = &json["WebSocket"];
+        assert_eq!(inner["port"], 9000);
+        assert_eq!(inner["host"], "127.0.0.1");
     }
 
     #[tokio::test]

@@ -29,7 +29,7 @@ pub fn translate_to_yaml(store: &ModelConfigStore) -> BTreeMap<String, Value> {
 
     // 2. Group models by provider → write providers section
     let mut providers_json = serde_json::Map::new();
-    for (_model_id, model) in &store.models {
+    for model in store.models.values() {
         let provider = match store.providers.get(&model.provider_id) {
             Some(p) => p,
             None => continue,
@@ -61,7 +61,7 @@ pub fn translate_to_yaml(store: &ModelConfigStore) -> BTreeMap<String, Value> {
 
     // 3. Write model_aliases (only models with non-empty alias)
     let mut aliases_json = serde_json::Map::new();
-    for (_model_id, model) in &store.models {
+    for model in store.models.values() {
         if model.alias.is_empty() {
             continue;
         }
@@ -174,15 +174,13 @@ pub fn translate_to_yaml(store: &ModelConfigStore) -> BTreeMap<String, Value> {
 /// Providers and models get auto-generated UUIDs; aliases are applied to matching models.
 pub fn translate_from_yaml(yaml: &BTreeMap<String, Value>) -> ModelConfigStore {
     let now = now_ms();
-    let mut store = ModelConfigStore::default();
-
-    // 1. Extract default model
-    store.default_model = yaml
+    let default_model = yaml
         .get("model")
         .and_then(|m| m.get("default"))
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
+    let mut store = ModelConfigStore { default_model, ..Default::default() };
 
     // 2. Extract providers and models
     if let Some(providers_yaml) = yaml.get("providers").and_then(|v| v.as_object()) {

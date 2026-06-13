@@ -189,7 +189,7 @@ export function createWsGatewayClientImpl(): WsGatewayClient {
       return doConnect();
     },
 
-    call(method: string, params: Record<string, unknown>): Promise<any> {
+    call(method: string, params: Record<string, unknown>): Promise<unknown> {
       return new Promise((resolve, reject) => {
         if (!ws || ws.readyState !== WebSocket.OPEN) {
           reject(new Error("WS not connected"));

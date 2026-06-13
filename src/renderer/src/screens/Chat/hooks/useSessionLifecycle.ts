@@ -6,7 +6,7 @@ import type {
   UsageState,
 } from "../types";
 
-interface SessionLifecycleState {
+export interface SessionLifecycleState {
   hermesSessionId: string | null;
   pendingApproval: ApprovalRequest | null;
   pendingClarify: ClarifyRequest | null;
@@ -21,7 +21,7 @@ interface SessionLifecycleState {
   toolProgress: string | null;
 }
 
-type Action =
+export type SessionLifecycleAction =
   | { type: "reset" }
   | { type: "setHermesSessionId"; value: string | null }
   | { type: "setPendingApproval"; value: ApprovalRequest | null }
@@ -57,7 +57,7 @@ function initialState(): SessionLifecycleState {
 
 function reducer(
   state: SessionLifecycleState,
-  action: Action,
+  action: SessionLifecycleAction,
 ): SessionLifecycleState {
   switch (action.type) {
     case "reset":

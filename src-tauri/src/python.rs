@@ -75,7 +75,7 @@ fn looks_like_hermes_home(path: &Path) -> bool {
 
 fn normalize_home_path(path: PathBuf) -> PathBuf {
     // If user selected ~/.hermes/hermes-agent, back up to .hermes
-    if path.file_name().map_or(false, |n| n == "hermes-agent") {
+    if path.file_name().is_some_and(|n| n == "hermes-agent") {
         if let Some(parent) = path.parent() {
             return parent.to_path_buf();
         }

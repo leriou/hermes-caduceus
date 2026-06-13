@@ -5,7 +5,7 @@ const cache: Record<string, string> = {};
 let initialized = false;
 
 const isTauri =
-  typeof window !== "undefined" && !!(window as any).__TAURI_INTERNALS__;
+  typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
 
 export async function initStore(): Promise<void> {
   if (initialized) return;

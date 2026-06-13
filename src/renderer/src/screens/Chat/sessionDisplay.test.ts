@@ -127,7 +127,7 @@ describe("mergeContinuationLabels edge cases", () => {
   it("keeps all non-continuation user messages", () => {
     const messages: ChatMessage[] = [
       { id: "u1", role: "user", content: "Hello" },
-      { id: "a1", role: "assistant", content: "Hi" },
+      { id: "a1", role: "agent", content: "Hi" },
       { id: "u2", role: "user", content: "How are you?" },
     ];
     expect(mergeContinuationLabels(messages)).toHaveLength(3);

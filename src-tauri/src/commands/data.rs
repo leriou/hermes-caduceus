@@ -116,17 +116,17 @@ pub async fn list_profiles(app: AppHandle) -> Result<Value, String> {
 
 #[command]
 pub async fn create_profile(app: AppHandle, name: String, clone: bool) -> Result<Value, String> {
-    profiles::create_profile(Some(&app), &name, clone).map(|_| json!({"success": true})).map_err(|e| e)
+    profiles::create_profile(Some(&app), &name, clone).map(|_| json!({"success": true}))
 }
 
 #[command]
 pub async fn delete_profile(app: AppHandle, name: String) -> Result<Value, String> {
-    profiles::delete_profile(Some(&app), &name).map(|_| json!({"success": true})).map_err(|e| e)
+    profiles::delete_profile(Some(&app), &name).map(|_| json!({"success": true}))
 }
 
 #[command]
 pub async fn set_active_profile(app: AppHandle, name: String) -> Result<Value, String> {
-    profiles::set_active_profile(Some(&app), &name).map(|_| json!({"success": true})).map_err(|e| e)
+    profiles::set_active_profile(Some(&app), &name).map(|_| json!({"success": true}))
 }
 
 #[command]
@@ -298,7 +298,7 @@ pub async fn read_logs(app: AppHandle, log_file: Option<String>, lines: Option<u
         Ok(content) => {
             let n = lines.unwrap_or(200);
             let all_lines: Vec<&str> = content.lines().collect();
-            let tail: Vec<&str> = all_lines.iter().rev().take(n).map(|s| *s).collect::<Vec<_>>().into_iter().rev().collect();
+            let tail: Vec<&str> = all_lines.iter().rev().take(n).copied().collect::<Vec<_>>().into_iter().rev().collect();
             Ok(json!({ "content": tail.join("\n"), "path": path_str }))
         }
         Err(_) => Ok(json!({ "content": "", "path": path_str })),
@@ -306,8 +306,18 @@ pub async fn read_logs(app: AppHandle, log_file: Option<String>, lines: Option<u
 }
 
 #[command]
-pub async fn get_toolsets(_state: State<'_, AppState>, app: AppHandle, profile: Option<String>) -> Result<Value, String> {
-    // Use CLI only — matches Electron's getToolsets which always runs `hermes tools list`
+pub async fn get_toolsets(state: State<'_, AppState>, app: AppHandle, profile: Option<String>) -> Result<Value, String> {
+    {
+        let gateway = state.gateway.lock().await;
+        if let Some(gw) = gateway.as_ref() {
+            if gw.is_running().await {
+                if let Ok(val) = gw.call("toolsets.list", json!({})).await {
+                    return Ok(val);
+                }
+            }
+        }
+    }
+    // Fallback to CLI
     run_cli_toolsets(&app, profile).await
 }
 
@@ -333,8 +343,9 @@ async fn run_cli_toolsets(app: &AppHandle, profile: Option<String>) -> Result<Va
                 return Ok(json!([]));
             }
             let text = String::from_utf8_lossy(&out.stdout);
-            let re = regex::Regex::new(r"\x1b\[[0-9;]*[mK]").unwrap();
-            let clean = re.replace_all(&text, "");
+            let ansi_re = regex::Regex::new(r"\x1b\[[0-9;]*[mK]").unwrap();
+            let clean = ansi_re.replace_all(&text, "");
+            let toolset_re = regex::Regex::new(r"^[✓✗✔✘]\s+(enabled|disabled)\s+(\S+)\s+(.*)").unwrap();
             let mut toolsets = Vec::new();
             let mut source = "built-in".to_string();
 
@@ -361,8 +372,7 @@ async fn run_cli_toolsets(app: &AppHandle, profile: Option<String>) -> Result<Va
                     continue;
                 }
 
-                let pat = regex::Regex::new(r"^[✓✗✔✘]\s+(enabled|disabled)\s+(\S+)\s+(.*)").unwrap();
-                if let Some(caps) = pat.captures(trimmed) {
+                if let Some(caps) = toolset_re.captures(trimmed) {
                     let enabled = caps.get(1).map(|m| m.as_str() == "enabled").unwrap_or(false);
                     let key = caps.get(2).map(|m| m.as_str().to_string()).unwrap_or_default();
                     let desc = caps.get(3).map(|m| m.as_str().to_string()).unwrap_or_default();
@@ -413,7 +423,17 @@ pub async fn set_toolset_enabled(state: State<'_, AppState>, app: AppHandle, key
 }
 
 #[command]
-pub async fn get_plugins(app: AppHandle, _profile: Option<String>) -> Result<Value, String> {
+pub async fn get_plugins(state: State<'_, AppState>, app: AppHandle, _profile: Option<String>) -> Result<Value, String> {
+    {
+        let gateway = state.gateway.lock().await;
+        if let Some(gw) = gateway.as_ref() {
+            if gw.is_running().await {
+                if let Ok(val) = gw.call("plugins.list", json!({})).await {
+                    return Ok(val);
+                }
+            }
+        }
+    }
     match run_hermes_cli(&app, &["plugins", "list"]).await {
         Ok(output) => Ok(json!(parse_plugins_table(&output))),
         Err(e) => Err(e),
@@ -480,7 +500,7 @@ fn parse_plugins_table(output: &str) -> Vec<Value> {
 #[command]
 pub async fn set_plugin_enabled(app: AppHandle, name: String, enabled: bool, _profile: Option<String>) -> Result<Value, String> {
     let action = if enabled { "enable" } else { "disable" };
-    run_hermes_cli(&app, &["plugins", action, &name]).await.map_err(|e| e)?;
+    run_hermes_cli(&app, &["plugins", action, &name]).await?;
     Ok(json!({ "success": true }))
 }
 
@@ -602,8 +622,9 @@ pub async fn get_plugin_metrics(
 import sys, json, importlib.util
 from pathlib import Path
 pd = Path("{plugins_dir}")
+target = sys.argv[1] if len(sys.argv) > 1 else ""
 results = []
-dirs = [pd / "{target}"] if "{target}" else sorted(d for d in pd.iterdir() if d.is_dir() and not d.name.startswith(("_", ".")))
+dirs = [pd / target] if target else sorted(d for d in pd.iterdir() if d.is_dir() and not d.name.startswith(("_", ".")))
 for pdir in dirs:
     init = pdir / "__init__.py"
     if not init.exists(): continue
@@ -623,12 +644,12 @@ for pdir in dirs:
 print(json.dumps(results, default=str))
 "#,
         plugins_dir = plugins_dir.display().to_string().replace('"', r#"\""#),
-        target = target,
     );
 
     let output = tokio::process::Command::new(&python_path)
         .arg("-c")
         .arg(&script)
+        .arg(&target)
         .env("HERMES_HOME", &hermes_home)
         .output()
         .await

@@ -277,15 +277,19 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
     }
     goTo("chat");
     try {
-      const res = await tuiResumeSession(targetResumeSessionId);
+      const res = await tuiResumeSession(targetResumeSessionId) as {
+        session_id?: string;
+        messages?: Array<{ role: string; text?: string; content?: string; name?: string; context?: string }>;
+        info?: { model?: string };
+      } | undefined;
       if (res) {
         const tuiSessionId = res.session_id || targetResumeSessionId;
         if (chatMessages.length === 0 && Array.isArray(res.messages) && res.messages.length > 0) {
           const gatewayMessages: ChatMessage[] = [];
           for (const msg of res.messages) {
             const id = `gw-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-            if (msg.role === "user" && (msg.text || msg.content)) gatewayMessages.push({ id, role: "user", content: msg.text || msg.content });
-            else if (msg.role === "assistant" && (msg.text || msg.content)) gatewayMessages.push({ id, role: "agent", content: msg.text || msg.content });
+            if (msg.role === "user" && (msg.text || msg.content)) gatewayMessages.push({ id, role: "user", content: (msg.text || msg.content) as string });
+            else if (msg.role === "assistant" && (msg.text || msg.content)) gatewayMessages.push({ id, role: "agent", content: (msg.text || msg.content) as string });
             else if (msg.role === "tool") gatewayMessages.push({ id, kind: "tool_result", role: "agent", callId: "", name: msg.name || "tool", content: msg.context || "" });
           }
           if (targetTabId) sessionManager.updateTab(targetTabId, { messages: gatewayMessages, hermesSessionId: tuiSessionId, model: res.info?.model || "" });
@@ -297,13 +301,17 @@ function Layout({ verifyWarning, onReinstall, onDismissVerifyWarning }: LayoutPr
     }
     if (chatMessages.length === 0) {
       try {
-        const hist = await tuiSessionHistory(targetResumeSessionId);
+        const hist = await tuiSessionHistory(targetResumeSessionId) as {
+          result?: {
+            messages?: Array<{ role: string; text?: string; content?: string; name?: string; context?: string }>;
+          };
+        } | undefined;
         if (hist?.result?.messages && Array.isArray(hist.result.messages)) {
           const memMessages: ChatMessage[] = [];
           for (const msg of hist.result.messages) {
             const id = `mem-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-            if (msg.role === "user" && (msg.text || msg.content)) memMessages.push({ id, role: "user", content: msg.text || msg.content });
-            else if (msg.role === "assistant" && (msg.text || msg.content)) memMessages.push({ id, role: "agent", content: msg.text || msg.content });
+            if (msg.role === "user" && (msg.text || msg.content)) memMessages.push({ id, role: "user", content: (msg.text || msg.content) as string });
+            else if (msg.role === "assistant" && (msg.text || msg.content)) memMessages.push({ id, role: "agent", content: (msg.text || msg.content) as string });
             else if (msg.role === "tool") memMessages.push({ id, kind: "tool_result", role: "agent", callId: "", name: msg.name || "tool", content: msg.context || "" });
           }
           if (memMessages.length > 0 && targetTabId) sessionManager.updateTab(targetTabId, { messages: memMessages });

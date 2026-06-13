@@ -92,7 +92,8 @@ pub fn voice_model_status() -> Result<serde_json::Value, String> {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_nanos()
-        .is_multiple_of(10)
+        % 10
+        == 0
     {
         clean_stale_files();
     }

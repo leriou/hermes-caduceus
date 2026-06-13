@@ -208,7 +208,7 @@ const CodeBlock = memo(function CodeBlock({
   );
 });
 
-const MD_COMPONENTS: Record<string, React.ComponentType<any>> = {
+const MD_COMPONENTS: Record<string, React.ComponentType<Record<string, unknown>>> = {
   table: ({ children }: { children?: React.ReactNode }) => (
     <div className="sm-table-wrap">
       <table className="sm-table">{children}</table>

@@ -4,7 +4,7 @@ export type WsConnectionState = "connected" | "disconnected" | "reconnecting" | 
 
 export interface WsGatewayClient {
   connect(): Promise<boolean>;
-  call(method: string, params: Record<string, unknown>): Promise<any>;
+  call(method: string, params: Record<string, unknown>): Promise<unknown>;
   onEvent(callback: (event: NormalizedTuiEvent) => void): () => void;
   onConnectionChange(callback: (state: WsConnectionState) => void): () => void;
   close(): void;

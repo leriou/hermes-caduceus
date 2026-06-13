@@ -281,28 +281,32 @@ export const MessageList = memo(
         renderMessage(msg, index, visibleMessages.length, isLoading)
       }
       components={{
-        Footer: () =>
-          isLoading ? (
-            <div className="chat-messages-inner">
-              {!streamingText && !toolProgress && (
-                <ThinkingIndicator text={streamingReasoning} />
-              )}
-              {!streamingText && toolProgress && (
-                <ToolProgressIndicator toolProgress={toolProgress} messages={messages} />
-              )}
-              {todos.length > 0 && (
-                <TodoPanel todos={todos} defaultCollapsed />
-              )}
-              {streamingText && !streamingText.startsWith("[HCE COMPACTION") && (
-                <div className="chat-message chat-message-agent">
-                  <HermesAvatar />
-                  <div className="chat-bubble chat-bubble-agent">
-                    <StreamingMarkdown>{stripHceCompaction(streamingText) || streamingText}</StreamingMarkdown>
+        Footer: () => (
+          <>
+            {isLoading && (
+              <div className="chat-messages-inner">
+                {!streamingText && !toolProgress && (
+                  <ThinkingIndicator text={streamingReasoning} />
+                )}
+                {!streamingText && toolProgress && (
+                  <ToolProgressIndicator toolProgress={toolProgress} messages={messages} />
+                )}
+                {todos.length > 0 && (
+                  <TodoPanel todos={todos} defaultCollapsed />
+                )}
+                {streamingText && !streamingText.startsWith("[HCE COMPACTION") && (
+                  <div className="chat-message chat-message-agent">
+                    <HermesAvatar />
+                    <div className="chat-bubble chat-bubble-agent">
+                      <StreamingMarkdown>{stripHceCompaction(streamingText) || streamingText}</StreamingMarkdown>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ) : null,
+                )}
+              </div>
+            )}
+            <div style={{ height: 80 }} />
+          </>
+        ),
         List: forwardRef(function VirtuosoList(
           { style, children, ...props }: any,
           ref: any,

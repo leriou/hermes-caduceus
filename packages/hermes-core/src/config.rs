@@ -158,8 +158,8 @@ fn parse_scalar(remainder: &str) -> Option<String> {
     let mut result = String::new();
     if value.starts_with('"') || value.starts_with('\'') {
         let quote = value.chars().next().unwrap();
-        let mut chars = value.chars().skip(1);
-        while let Some(c) = chars.next() {
+        let chars = value.chars().skip(1);
+        for c in chars {
             if c == quote { break; }
             result.push(c);
         }

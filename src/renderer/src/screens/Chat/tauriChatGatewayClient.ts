@@ -101,7 +101,7 @@ export function createTauriChatGatewayClient(
         const message = (err as Error).message || String(err);
         if (!/not found|invalid|expired|session/i.test(message)) throw err;
         if (dbSessionId) {
-          const resumed = await api.tuiResumeSession(dbSessionId);
+          const resumed = await api.tuiResumeSession(dbSessionId) as { session_id?: string } | undefined;
           sid = resumed?.session_id || sid;
         } else {
           const created = await api.tuiCreateSession(model);

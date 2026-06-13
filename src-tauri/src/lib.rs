@@ -62,42 +62,35 @@ pub fn run() {
 
       menu::setup_menu(app.handle())?;
 
-      // Initialize audio stream on main thread (macOS CoreAudio requirement)
-      {
-        use tauri::Manager;
-        let state = app.state::<AppState>();
-        voice_input::init_audio(&state.voice);
-      }
-
       #[cfg(target_os = "macos")]
       {
         use tauri::Manager;
         use tauri::window::{Effect, EffectsBuilder};
-        let window = app.get_webview_window("main").unwrap();
-        window.set_effects(
-          EffectsBuilder::new()
-            .effect(Effect::UnderWindowBackground)
-            .build(),
-        )?;
-
-        // Disable WKWebView scrollView rubber-band / elastic bounce
-        let _ = window.eval(
-          "document.addEventListener('wheel',function(e){\
-             if(e.deltaY===0)return;\
-             var el=e.target;\
-             while(el&&el!==document.documentElement){\
-               var s=getComputedStyle(el);\
-               if((s.overflowY==='auto'||s.overflowY==='scroll')&&el.scrollHeight>el.clientHeight){\
-                 var atT=el.scrollTop<=0&&e.deltaY<0;\
-                 var atB=el.scrollTop+el.clientHeight>=el.scrollHeight-1&&e.deltaY>0;\
-                 if(atT||atB)e.preventDefault();\
-                 return;\
-               }\
-               el=el.parentElement;\
-             }\
-             e.preventDefault();\
-           },{passive:false});"
-        );
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.set_effects(
+            EffectsBuilder::new()
+                .effect(Effect::UnderWindowBackground)
+                .build(),
+            );
+            // Disable WKWebView scrollView rubber-band / elastic bounce
+            let _ = window.eval(
+            "document.addEventListener('wheel',function(e){\
+                if(e.deltaY===0)return;\
+                var el=e.target;\
+                while(el&&el!==document.documentElement){\
+                var s=getComputedStyle(el);\
+                if((s.overflowY==='auto'||s.overflowY==='scroll')&&el.scrollHeight>el.clientHeight){\
+                    var atT=el.scrollTop<=0&&e.deltaY<0;\
+                    var atB=el.scrollTop+el.clientHeight>=el.scrollHeight-1&&e.deltaY>0;\
+                    if(atT||atB)e.preventDefault();\
+                    return;\
+                }\
+                el=el.parentElement;\
+                }\
+                e.preventDefault();\
+            },{passive:false});"
+            );
+        }
       }
 
       // Pre-warm the TUI Gateway in the background
@@ -121,7 +114,7 @@ pub fn run() {
       Ok(())
     })
     .invoke_handler(tauri::generate_handler![
-        abort_chat, add_memory_entry, add_model, adopt_hermes_home, cancel_oauth_login, 
+        abort_chat, add_memory_entry, add_model, adopt_hermes_home, cancel_oauth_login, cancel_install,
         check_for_updates, check_install, check_needs_migration, clear_staged_attachments, copy_diagnostics, copy_to_clipboard,
         create_cron_job, create_profile, delete_model, delete_profile, delete_session, delete_session_chain, 
         discover_memory_providers, discover_provider_models, download_update, 
@@ -169,6 +162,10 @@ pub fn run() {
     .run(|app_handle, event| {
         if let tauri::RunEvent::Exit = event {
             use tauri::Manager;
+            
+            // Clean up any dangling install or auth processes
+            commands::system::kill_tracked_processes();
+
             let state = app_handle.state::<AppState>();
             let gateway = state.gateway.blocking_lock().take();
             if let Some(gw) = gateway {

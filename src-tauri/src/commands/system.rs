@@ -9,6 +9,41 @@ use std::sync::Arc;
 use std::path::Path;
 use tokio::io::AsyncBufReadExt;
 use super::utils::*;
+use std::sync::OnceLock;
+use std::sync::Mutex;
+
+static ACTIVE_OAUTH_PID: OnceLock<Mutex<Option<u32>>> = OnceLock::new();
+static ACTIVE_INSTALL_PID: OnceLock<Mutex<Option<u32>>> = OnceLock::new();
+
+pub fn kill_tracked_processes() {
+    let mut to_kill = Vec::new();
+    if let Some(mutex) = ACTIVE_OAUTH_PID.get() {
+        if let Ok(mut lock) = mutex.lock() {
+            if let Some(pid) = *lock {
+                to_kill.push(pid);
+                *lock = None;
+            }
+        }
+    }
+    if let Some(mutex) = ACTIVE_INSTALL_PID.get() {
+        if let Ok(mut lock) = mutex.lock() {
+            if let Some(pid) = *lock {
+                to_kill.push(pid);
+                *lock = None;
+            }
+        }
+    }
+    for pid in to_kill {
+        #[cfg(unix)]
+        {
+            let _ = std::process::Command::new("kill").arg("-9").arg(pid.to_string()).output();
+        }
+        #[cfg(windows)]
+        {
+            let _ = std::process::Command::new("taskkill").args(["/F", "/PID", &pid.to_string()]).output();
+        }
+    }
+}
 
 #[command]
 pub async fn check_install(app: AppHandle) -> Result<Value, String> {
@@ -313,7 +348,7 @@ pub async fn set_credential_pool(app: AppHandle, provider: String, entries: Valu
     } else {
         json!({})
     };
-    if !store.get("credential_pool").is_some() || !store["credential_pool"].is_object() {
+    if store.get("credential_pool").is_none() || !store["credential_pool"].is_object() {
         store["credential_pool"] = json!({});
     }
     store["credential_pool"].as_object_mut().unwrap().insert(provider, entries);
@@ -390,6 +425,16 @@ pub async fn oauth_login(app: AppHandle, provider: String, _profile: Option<Stri
         .spawn()
         .map_err(|e| format!("Failed to run auth: {}", e))?;
 
+    if let Some(pid) = child.id() {
+        if let Some(mutex) = ACTIVE_OAUTH_PID.get() {
+            if let Ok(mut lock) = mutex.lock() {
+                *lock = Some(pid);
+            }
+        } else {
+            let _ = ACTIVE_OAUTH_PID.set(Mutex::new(Some(pid)));
+        }
+    }
+
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
     let mut reader = tokio::io::BufReader::new(stdout).lines();
 
@@ -398,6 +443,12 @@ pub async fn oauth_login(app: AppHandle, provider: String, _profile: Option<Stri
     }
 
     let status = child.wait().await.map_err(|e| e.to_string())?;
+
+    if let Some(mutex) = ACTIVE_OAUTH_PID.get() {
+        if let Ok(mut lock) = mutex.lock() {
+            *lock = None;
+        }
+    }
 
     if status.success() {
         app.emit("oauthloginprogress", "OAuth login complete.\n").ok();
@@ -410,7 +461,41 @@ pub async fn oauth_login(app: AppHandle, provider: String, _profile: Option<Stri
 
 #[command]
 pub async fn cancel_oauth_login() -> Result<Value, String> {
-    // TODO: implement OAuth cancel (kill running auth process)
+    if let Some(mutex) = ACTIVE_OAUTH_PID.get() {
+        if let Ok(mut lock) = mutex.lock() {
+            if let Some(pid) = *lock {
+                #[cfg(unix)]
+                {
+                    let _ = std::process::Command::new("kill").arg("-9").arg(pid.to_string()).output();
+                }
+                #[cfg(windows)]
+                {
+                    let _ = std::process::Command::new("taskkill").args(["/F", "/PID", &pid.to_string()]).output();
+                }
+                *lock = None;
+            }
+        }
+    }
+    Ok(json!(true))
+}
+
+#[command]
+pub async fn cancel_install() -> Result<Value, String> {
+    if let Some(mutex) = ACTIVE_INSTALL_PID.get() {
+        if let Ok(mut lock) = mutex.lock() {
+            if let Some(pid) = *lock {
+                #[cfg(unix)]
+                {
+                    let _ = std::process::Command::new("kill").arg("-9").arg(pid.to_string()).output();
+                }
+                #[cfg(windows)]
+                {
+                    let _ = std::process::Command::new("taskkill").args(["/F", "/PID", &pid.to_string()]).output();
+                }
+                *lock = None;
+            }
+        }
+    }
     Ok(json!(true))
 }
 
@@ -440,6 +525,16 @@ pub async fn start_install(app: AppHandle) -> Result<Value, String> {
         .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| format!("Install failed: {}", e))?;
+
+    if let Some(pid) = child.id() {
+        if let Some(mutex) = ACTIVE_INSTALL_PID.get() {
+            if let Ok(mut lock) = mutex.lock() {
+                *lock = Some(pid);
+            }
+        } else {
+            let _ = ACTIVE_INSTALL_PID.set(Mutex::new(Some(pid)));
+        }
+    }
 
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
     let mut reader = tokio::io::BufReader::new(stdout).lines();
@@ -477,6 +572,12 @@ pub async fn start_install(app: AppHandle) -> Result<Value, String> {
     }
 
     let status = child.wait().await.map_err(|e| e.to_string())?;
+
+    if let Some(mutex) = ACTIVE_INSTALL_PID.get() {
+        if let Ok(mut lock) = mutex.lock() {
+            *lock = None;
+        }
+    }
 
     if status.success() {
         app.emit("installprogress", json!({

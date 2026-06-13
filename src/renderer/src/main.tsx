@@ -26,7 +26,7 @@ import { MARKDOWN_STYLE_STORAGE_KEY, MARKDOWN_STYLE_OPTIONS, type MarkdownStyle 
 
 function setupTauriContextMenu(): void {
   document.addEventListener("contextmenu", (e) => {
-    if (!(window as any).__TAURI_INTERNALS__) return;
+    if (!window.__TAURI_INTERNALS__) return;
     e.preventDefault();
 
     const target = e.target as HTMLElement;
@@ -147,9 +147,9 @@ function showContextMenu(x: number, y: number, items: MenuItem[]): void {
 }
 
 async function probeGPU(): Promise<boolean> {
-  if (!("gpu" in navigator)) return false;
+  if (!navigator.gpu) return false;
   try {
-    const adapter = await (navigator as any).gpu.requestAdapter();
+    const adapter = await navigator.gpu.requestAdapter();
     return !!adapter;
   } catch {
     return false;
@@ -167,8 +167,8 @@ async function boot(): Promise<void> {
     validStyles.has(savedMdStyle as MarkdownStyle) ? savedMdStyle : "default",
   );
 
-  if ((window as any).__TAURI_INTERNALS__) {
-    (window as any).hermesAPI = hermesAPI;
+  if (window.__TAURI_INTERNALS__) {
+    window.hermesAPI = hermesAPI;
     setupTauriContextMenu();
   }
 

@@ -1,20 +1,24 @@
 import { useCallback } from "react";
-import type { ChatMessage } from "../types";
+import type { ChatMessage, SystemEventKind, SystemEventMessage } from "../types";
+import type { TauriChatGatewayClient } from "../tauriChatGatewayClient";
+import type { SessionLifecycleAction } from "./useSessionLifecycle";
 import { shortModelName } from "../sessionDisplay";
 
+interface SystemEventOptions {
+  tone?: SystemEventMessage["tone"];
+  code?: string;
+  id?: string;
+}
+
 interface UseGatewayCommandsOptions {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  gatewayClient: any;
+  gatewayClient: TauriChatGatewayClient;
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   addAgentMessage: (content: string) => void;
   addStatusMessage: (title: string, content?: string, tone?: "info" | "success" | "warning" | "error") => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  addSystemEvent: (event: any, title: string, content?: string, options?: any) => void;
+  addSystemEvent: (event: SystemEventKind, title: string, content?: string, options?: SystemEventOptions) => void;
   setIsLoading: (loading: boolean) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  dispatch: (action: any) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onSessionStateChange?: (patch: any) => void;
+  dispatch: React.Dispatch<SessionLifecycleAction>;
+  onSessionStateChange?: (patch: Record<string, unknown>) => void;
   sessionModel: string | null;
   isLoading: boolean;
   currentModel: string;

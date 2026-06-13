@@ -89,7 +89,7 @@ pub async fn discover_provider_models(
 
     let resp = req.send().await.map_err(|e| {
         if e.is_connect() || e.is_timeout() {
-            format!("unknown-host")
+            "unknown-host".to_string()
         } else {
             format!("HTTP error: {}", e)
         }
@@ -193,7 +193,7 @@ fn model_sort_key(id: &str) -> String {
     // Rest is the version-like suffix
     let version = &lower[prefix.len()..];
     // Pad numeric segments to fixed width so "5.5" > "5" > "4.1" lexicographically
-    let padded_version: String = version.split(|c: char| c == '.' || c == '-')
+    let padded_version: String = version.split(['.', '-'])
         .map(|seg| {
             if let Ok(n) = seg.parse::<u32>() {
                 format!("{:06}", n)

@@ -141,7 +141,6 @@ fn search_sessions_from_db(db_path: &std::path::Path, query: &str, limit: u32) -
 
     if has_fts {
         let sanitized: String = query
-            .trim()
             .split_whitespace()
             .filter(|w| !w.is_empty())
             .map(|w| format!("\"{}\"*", w.replace('"', "")))
@@ -432,7 +431,6 @@ pub fn get_related_session_ids<R: Runtime>(app: Option<&AppHandle<R>>, session_i
 pub fn delete_session_chain<R: Runtime>(app: Option<&AppHandle<R>>, session_id: &str, profile: Option<String>) -> Result<Value, String> {
     let db_path = state_db_path(app, profile).ok_or("state.db not found")?;
     let ids = get_related_session_ids(app, session_id, None::<String>)
-        .and_then(|v| Ok(v))
         .unwrap_or_else(|_| json!([session_id]));
 
     let ids_arr = ids.as_array().cloned().unwrap_or_else(|| vec![json!(session_id)]);

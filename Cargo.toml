@@ -1,0 +1,10 @@
+[workspace]
+members = ["src-tauri", "packages/hermes-core"]
+resolver = "2"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+strip = true

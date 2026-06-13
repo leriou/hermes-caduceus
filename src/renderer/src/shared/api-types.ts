@@ -134,6 +134,13 @@ export interface HomeHealthSummary {
 
 export type Result = { success: boolean; error?: string };
 
+/**
+ * Opaque JSON object returned by TUI gateway commands (compress, slash_exec,
+ * setGoal, etc.). The Rust side returns `serde_json::Value`, so the exact
+ * shape depends on the Python gateway response. Callers must narrow.
+ */
+export type GatewayResult = Record<string, unknown>;
+
 // ── HermesAPI interface ───────────────────────────────────────────────────
 
 export interface HermesAPI {
@@ -359,7 +366,7 @@ export interface HermesAPI {
       content: string;
       exists: boolean;
       lastModified: number | null;
-      entries: any[];
+      entries: unknown[];
       charCount: number;
       charLimit: number;
     };
@@ -511,7 +518,7 @@ export interface HermesAPI {
       aliases?: string[];
     }>
   >;
-  listTemplates: () => Promise<any>;
+  listTemplates: () => Promise<unknown[]>;
   addModel: (
     name: string,
     provider: string,
@@ -740,19 +747,19 @@ export interface HermesAPI {
   writeConfigYaml: (content: string, profile?: string) => Promise<boolean>;
 
   // TUI Gateway — session management
-  tuiSlashExec: (sessionId: string, command: string) => Promise<any>;
+  tuiSlashExec: (sessionId: string, command: string) => Promise<GatewayResult>;
   tuiCommandDispatch: (
     sessionId: string,
     name: string,
     arg?: string,
-  ) => Promise<any>;
-  tuiCompress: (sessionId: string, focusTopic?: string) => Promise<any>;
-  tuiSetGoal: (sessionId: string, goal: string) => Promise<any>;
-  tuiSetModel: (sessionId: string, model: string) => Promise<any>;
-  tuiSteer: (sessionId: string, text: string) => Promise<any>;
+  ) => Promise<GatewayResult>;
+  tuiCompress: (sessionId: string, focusTopic?: string) => Promise<GatewayResult>;
+  tuiSetGoal: (sessionId: string, goal: string) => Promise<GatewayResult>;
+  tuiSetModel: (sessionId: string, model: string) => Promise<GatewayResult>;
+  tuiSteer: (sessionId: string, text: string) => Promise<GatewayResult>;
   tuiCreateSession: (model?: string) => Promise<{ session_id: string }>;
-  tuiResumeSession: (sessionId: string) => Promise<any>;
-  tuiSessionHistory: (sessionId: string) => Promise<any>;
+  tuiResumeSession: (sessionId: string) => Promise<GatewayResult>;
+  tuiSessionHistory: (sessionId: string) => Promise<GatewayResult>;
   tuiSubmitPrompt: (
     sessionId: string,
     text: string,
@@ -762,44 +769,44 @@ export interface HermesAPI {
   tuiUndo: (sessionId: string) => Promise<void>;
 
   // TUI Gateway — tools, approval, session status, completion
-  tuiToolsList: (sessionId?: string) => Promise<any>;
-  tuiToolsShow: (name?: string, sessionId?: string) => Promise<any>;
+  tuiToolsList: (sessionId?: string) => Promise<GatewayResult>;
+  tuiToolsShow: (name?: string, sessionId?: string) => Promise<GatewayResult>;
   tuiToolsConfigure: (
     name: string,
     enabled: boolean,
     sessionId?: string,
-  ) => Promise<any>;
+  ) => Promise<GatewayResult>;
   tuiApprovalRespond: (
     sessionId: string,
     response: string,
     all?: boolean,
-  ) => Promise<any>;
+  ) => Promise<GatewayResult>;
   tuiClarifyRespond: (
     sessionId: string,
     answer: string,
     requestId?: string,
-  ) => Promise<any>;
+  ) => Promise<GatewayResult>;
   tuiSudoRespond: (
     sessionId: string,
     password: string,
     requestId?: string,
-  ) => Promise<any>;
+  ) => Promise<GatewayResult>;
   tuiSecretRespond: (
     sessionId: string,
     value: string,
     requestId?: string,
-  ) => Promise<any>;
+  ) => Promise<GatewayResult>;
   tuiSessionTitle: (
     sessionId: string,
   ) => Promise<{ title: string; session_key: string }>;
-  tuiSessionStatus: (sessionId: string) => Promise<any>;
-  tuiSessionUsage: (sessionId: string) => Promise<any>;
-  tuiSessionBranch: (sessionId: string, name?: string) => Promise<any>;
-  tuiCompleteSlash: (prefix: string) => Promise<any>;
-  tuiCommandsCatalog: () => Promise<any>;
-  voiceTts: (text: string) => Promise<any>;
+  tuiSessionStatus: (sessionId: string) => Promise<GatewayResult>;
+  tuiSessionUsage: (sessionId: string) => Promise<GatewayResult>;
+  tuiSessionBranch: (sessionId: string, name?: string) => Promise<GatewayResult>;
+  tuiCompleteSlash: (prefix: string) => Promise<GatewayResult>;
+  tuiCommandsCatalog: () => Promise<GatewayResult>;
+  voiceTts: (text: string) => Promise<GatewayResult>;
 
   onTuiEvent: (
-    callback: (params: { type: string; payload: any; sid?: string }) => void,
+    callback: (params: { type: string; payload: GatewayResult; sid?: string }) => void,
   ) => () => void;
 }
